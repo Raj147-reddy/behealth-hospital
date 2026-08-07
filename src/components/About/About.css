@@ -1,0 +1,42 @@
+.about{
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    padding:80px;
+    gap:60px;
+}
+
+.about-left img{
+    width:450px;
+    border-radius:15px;
+}
+
+.about-right{
+    width:500px;
+}
+
+.about-right h2{
+    color:#0077b6;
+    font-size:40px;
+    margin-bottom:20px;
+}
+
+.about-right p{
+    font-size:18px;
+    line-height:1.7;
+    margin-bottom:30px;
+}
+
+.about-right button{
+    background:#0077b6;
+    color:white;
+    border:none;
+    padding:15px 35px;
+    border-radius:8px;
+    cursor:pointer;
+    font-size:17px;
+}
+
+.about-right button:hover{
+    background:#023e8a;
+}
