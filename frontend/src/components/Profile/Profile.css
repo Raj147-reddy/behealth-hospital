@@ -1,0 +1,33 @@
+.profile-container {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #f4f8fb;
+}
+
+.profile-box {
+  width: 400px;
+  padding: 35px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+  text-align: center;
+}
+
+.profile-box h1 {
+  color: #1677ff;
+  margin-bottom: 30px;
+}
+
+.profile-info {
+  text-align: left;
+}
+
+.profile-info p {
+  padding: 12px;
+  margin: 10px 0;
+  background: #f5f7fa;
+  border-radius: 6px;
+  color: #333;
+}
