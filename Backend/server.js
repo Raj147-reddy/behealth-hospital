@@ -417,6 +417,56 @@ app.post(
 );
 
 // ======================================
+// GET ALL APPOINTMENTS
+// ======================================
+app.get(
+  "/api/appointments",
+  authenticateToken,
+  async (req, res) => {
+    console.log(
+      "Get all appointments request received"
+    );
+
+    try {
+      const result = await pool.query(
+        `SELECT
+          id,
+          name,
+          email,
+          phone,
+          department,
+          problem,
+          user_id,
+          status,
+          created_at
+         FROM appointments
+         ORDER BY created_at DESC`
+      );
+
+      console.log(
+        "All appointments found:",
+        result.rows.length
+      );
+
+      res.json({
+        message:
+          "Appointments fetched successfully",
+        appointments: result.rows,
+      });
+    } catch (error) {
+      console.error(
+        "Get appointments database error:",
+        error
+      );
+
+      res.status(500).json({
+        message: "Server error",
+      });
+    }
+  }
+);
+
+// ======================================
 // MY APPOINTMENTS
 // ======================================
 app.get(
