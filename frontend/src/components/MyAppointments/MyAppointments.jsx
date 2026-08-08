@@ -14,11 +14,12 @@ function MyAppointments() {
 
       if (!token) {
         alert("Please login again");
+        setLoading(false);
         return;
       }
 
       const response = await fetch(
-        "http://localhost:5000/api/my-appointments",
+        "https://behealth-hospital.onrender.com/api/appointments",
         {
           method: "GET",
           headers: {
@@ -34,63 +35,13 @@ function MyAppointments() {
       if (response.ok) {
         setAppointments(data.appointments || []);
       } else {
-        alert(data.message || "Failed to load appointments");
+        alert(data.message || "Unable to load appointments");
       }
     } catch (error) {
-      console.error("Appointments error:", error);
+      console.error("My appointments error:", error);
       alert("Cannot connect to backend");
     } finally {
       setLoading(false);
-    }
-  }
-
-  async function cancelAppointment(id) {
-    const confirmCancel = window.confirm(
-      "Are you sure you want to cancel this appointment?"
-    );
-
-    if (!confirmCancel) {
-      return;
-    }
-
-    try {
-      const token = localStorage.getItem("token");
-
-      const response = await fetch(
-        `http://localhost:5000/api/appointments/${id}/cancel`,
-        {
-          method: "PUT",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      const data = await response.json();
-
-      console.log("Cancel response:", data);
-
-      if (response.ok) {
-        alert("Appointment cancelled successfully");
-
-        setAppointments((oldAppointments) =>
-          oldAppointments.map((appointment) =>
-            appointment.id === id
-              ? {
-                  ...appointment,
-                  status: "Cancelled",
-                }
-              : appointment
-          )
-        );
-      } else {
-        alert(
-          data.message || "Unable to cancel appointment"
-        );
-      }
-    } catch (error) {
-      console.error("Cancel error:", error);
-      alert("Cannot connect to backend");
     }
   }
 
@@ -103,14 +54,8 @@ function MyAppointments() {
   }
 
   return (
-    <div
-      style={{
-        padding: "40px",
-        maxWidth: "900px",
-        margin: "0 auto",
-      }}
-    >
-      <h1>My Appointments</h1>
+    <div>
+      <h2>My Appointments</h2>
 
       {appointments.length === 0 ? (
         <p>No appointments found.</p>
@@ -125,21 +70,22 @@ function MyAppointments() {
               marginTop: "20px",
             }}
           >
-            <h2>{appointment.department}</h2>
+            <h3>Appointment #{appointment.id}</h3>
 
             <p>
-              <strong>Name:</strong>{" "}
-              {appointment.name}
+              <strong>Name:</strong> {appointment.name}
             </p>
 
             <p>
-              <strong>Email:</strong>{" "}
-              {appointment.email}
+              <strong>Email:</strong> {appointment.email}
             </p>
 
             <p>
-              <strong>Phone:</strong>{" "}
-              {appointment.phone}
+              <strong>Phone:</strong> {appointment.phone}
+            </p>
+
+            <p>
+              <strong>Department:</strong> {appointment.department}
             </p>
 
             <p>
@@ -154,28 +100,12 @@ function MyAppointments() {
 
             <p>
               <strong>Booked:</strong>{" "}
-              {new Date(
-                appointment.created_at
-              ).toLocaleString()}
+              {appointment.created_at
+                ? new Date(
+                    appointment.created_at
+                  ).toLocaleString()
+                : "Not available"}
             </p>
-
-            {appointment.status !== "Cancelled" ? (
-              <button
-                onClick={() =>
-                  cancelAppointment(appointment.id)
-                }
-                style={{
-                  padding: "10px 20px",
-                  cursor: "pointer",
-                }}
-              >
-                Cancel Appointment
-              </button>
-            ) : (
-              <p>
-                <strong>Appointment Cancelled</strong>
-              </p>
-            )}
           </div>
         ))
       )}
@@ -184,3 +114,4 @@ function MyAppointments() {
 }
 
 export default MyAppointments;
+

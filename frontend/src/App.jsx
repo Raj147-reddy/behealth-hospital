@@ -6,7 +6,6 @@ import Profile from "./components/Profile/Profile";
 import MyAppointments from "./components/MyAppointments/MyAppointments";
 import AdminDashboard from "./components/AdminDashboard/AdminDashboard";
 
-import Navbar from "./components/Navbar/Navbar";
 import Hero from "./components/Hero/Hero";
 import About from "./components/About/About";
 import Services from "./components/Services/Services";
@@ -20,10 +19,7 @@ function App() {
   );
 
   const [showRegister, setShowRegister] = useState(false);
-  const [showProfile, setShowProfile] = useState(false);
-  const [showAppointments, setShowAppointments] =
-    useState(false);
-  const [showAdmin, setShowAdmin] = useState(false);
+  const [page, setPage] = useState("home");
 
   const user = JSON.parse(
     localStorage.getItem("user") || "{}"
@@ -31,81 +27,129 @@ function App() {
 
   const isAdmin = user.is_admin === true;
 
-  function goHome() {
-    setShowProfile(false);
-    setShowAppointments(false);
-    setShowAdmin(false);
-  }
-
-  function goProfile() {
-    setShowProfile(true);
-    setShowAppointments(false);
-    setShowAdmin(false);
-  }
-
-  function goAppointments() {
-    setShowProfile(false);
-    setShowAppointments(true);
-    setShowAdmin(false);
-  }
-
-  function goAdmin() {
-    setShowProfile(false);
-    setShowAppointments(false);
-    setShowAdmin(true);
-  }
-
   function handleLogout() {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
 
     setIsLoggedIn(false);
-    setShowProfile(false);
-    setShowAppointments(false);
-    setShowAdmin(false);
+    setPage("home");
+  }
+
+  if (!isLoggedIn) {
+    if (showRegister) {
+      return (
+        <Register
+          setShowRegister={setShowRegister}
+        />
+      );
+    }
+
+    return (
+      <Login
+        setIsLoggedIn={setIsLoggedIn}
+        setShowRegister={setShowRegister}
+      />
+    );
+  }
+
+  if (page === "profile") {
+    return (
+      <>
+        <button onClick={() => setPage("home")}>
+          Home
+        </button>
+
+        <button onClick={() => setPage("appointments")}>
+          My Appointments
+        </button>
+
+        <button onClick={handleLogout}>
+          Logout
+        </button>
+
+        <Profile />
+      </>
+    );
+  }
+
+  if (page === "appointments") {
+    return (
+      <>
+        <button onClick={() => setPage("home")}>
+          Home
+        </button>
+
+        <button onClick={() => setPage("profile")}>
+          Profile
+        </button>
+
+        <button onClick={handleLogout}>
+          Logout
+        </button>
+
+        <MyAppointments />
+      </>
+    );
+  }
+
+  if (page === "admin" && isAdmin) {
+    return (
+      <>
+        <button onClick={() => setPage("home")}>
+          Home
+        </button>
+
+        <button onClick={handleLogout}>
+          Logout
+        </button>
+
+        <AdminDashboard />
+      </>
+    );
   }
 
   return (
     <>
-      {isLoggedIn ? (
-        <>
-          <Navbar
-            setIsLoggedIn={setIsLoggedIn}
-            setShowProfile={setShowProfile}
-            setShowAppointments={setShowAppointments}
-            setShowAdmin={setShowAdmin}
-            isAdmin={isAdmin}
-          />
+      <nav
+        style={{
+          padding: "15px",
+          background: "#eeeeee",
+          display: "flex",
+          gap: "10px",
+        }}
+      >
+        <button onClick={() => setPage("home")}>
+          Home
+        </button>
 
-          {showAdmin && isAdmin ? (
-            <AdminDashboard />
-          ) : showProfile ? (
-            <Profile />
-          ) : showAppointments ? (
-            <MyAppointments />
-          ) : (
-            <>
-              <Hero />
-              <About />
-              <Services />
-              <Doctors />
-              <Appointment />
-              <Footer />
-            </>
-          )}
-        </>
-      ) : showRegister ? (
-        <Register
-          setShowRegister={setShowRegister}
-        />
-      ) : (
-        <Login
-          setIsLoggedIn={setIsLoggedIn}
-          setShowRegister={setShowRegister}
-        />
-      )}
+        <button onClick={() => setPage("profile")}>
+          Profile
+        </button>
+
+        <button onClick={() => setPage("appointments")}>
+          My Appointments
+        </button>
+
+        {isAdmin && (
+          <button onClick={() => setPage("admin")}>
+            Admin Dashboard
+          </button>
+        )}
+
+        <button onClick={handleLogout}>
+          Logout
+        </button>
+      </nav>
+
+      <Hero />
+      <About />
+      <Services />
+      <Doctors />
+      <Appointment />
+      <Footer />
     </>
   );
 }
 
 export default App;
+

@@ -27,7 +27,7 @@ function Appointment() {
       }
 
       const response = await fetch(
-        "http://localhost:5000/api/appointments",
+        "https://behealth-hospital.onrender.com/api/appointments",
         {
           method: "POST",
           headers: {
@@ -68,7 +68,7 @@ function Appointment() {
   }
 
   return (
-    <section className="appointment-section">
+    <section>
       <h2>Book an Appointment</h2>
 
       <form
@@ -122,3 +122,4 @@ function Appointment() {
 }
 
 export default Appointment;
+

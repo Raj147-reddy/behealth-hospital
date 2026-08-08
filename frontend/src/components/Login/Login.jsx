@@ -12,33 +12,37 @@ function Login({ setIsLoggedIn, setShowRegister }) {
     }
 
     try {
-      const response = await fetch("http://localhost:5000/api/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: email,
-          password: password,
-        }),
-      });
+      console.log("Login button clicked");
+
+      const response = await fetch(
+        "https://behealth-hospital.onrender.com/api/login",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email: email,
+            password: password,
+          }),
+        }
+      );
 
       const data = await response.json();
+
+      console.log("Login response:", data);
 
       if (response.ok) {
         console.log("Login successful:", data);
 
-        // Save JWT token in browser
         localStorage.setItem("token", data.token);
-
-        // Save user information
         localStorage.setItem("user", JSON.stringify(data.user));
 
         alert("✅ Login successful");
 
         setIsLoggedIn(true);
       } else {
-        alert(`❌ ${data.message}`);
+        alert(`❌ ${data.message || "Login failed"}`);
       }
     } catch (error) {
       console.error("Login error:", error);
@@ -67,7 +71,7 @@ function Login({ setIsLoggedIn, setShowRegister }) {
           onChange={(e) => setPassword(e.target.value)}
         />
 
-        <button onClick={handleLogin}>
+        <button type="button" onClick={handleLogin}>
           Login
         </button>
 
@@ -86,3 +90,4 @@ function Login({ setIsLoggedIn, setShowRegister }) {
 }
 
 export default Login;
+

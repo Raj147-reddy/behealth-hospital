@@ -16,7 +16,7 @@ function Profile() {
 
       try {
         const response = await fetch(
-          "http://localhost:5000/api/profile",
+          "https://behealth-hospital.onrender.com/api/profile",
           {
             method: "GET",
             headers: {
@@ -65,7 +65,7 @@ function Profile() {
   return (
     <div className="profile-container">
       <div className="profile-box">
-        <h1>👤 My Profile</h1>
+        <h2>👤 My Profile</h2>
 
         <div className="profile-info">
           <p>
@@ -86,3 +86,4 @@ function Profile() {
 }
 
 export default Profile;
+

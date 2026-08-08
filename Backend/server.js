@@ -5,16 +5,26 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
 
+const app = express();
+
+// ======================================
+// PORT
+// ======================================
+const PORT = process.env.PORT || 5000;
+
+// ======================================
+// JWT SECRET
+// ======================================
+const JWT_SECRET =
+  process.env.JWT_SECRET || "behealth_secret_key_change_this";
+
+// ======================================
+// DATABASE
+// ======================================
 console.log("DB USER:", process.env.DB_USER);
 console.log("DB HOST:", process.env.DB_HOST);
 console.log("DB NAME:", process.env.DB_NAME);
 console.log("DB PORT:", process.env.DB_PORT);
-
-const app = express();
-const PORT = 5000;
-
-const JWT_SECRET =
-  process.env.JWT_SECRET || "behealth_secret_key_change_this";
 
 const pool = new Pool({
   user: process.env.DB_USER,
@@ -24,16 +34,10 @@ const pool = new Pool({
   port: process.env.DB_PORT,
 });
 
-app.use(
-  cors({
-    origin: [
-      "http://localhost:5173",
-      "http://localhost:5174",
-    ],
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
-);
+// ======================================
+// CORS
+// ======================================
+app.use(cors());
 
 app.use(express.json());
 
@@ -41,7 +45,9 @@ app.use(express.json());
 // HOME
 // ======================================
 app.get("/", (req, res) => {
-  res.send("BeHealth Hospital Backend Running");
+  res.json({
+    message: "BeHealth Hospital Backend Running",
+  });
 });
 
 // ======================================
@@ -252,35 +258,31 @@ function authenticateToken(req, res, next) {
 // ======================================
 // PROFILE
 // ======================================
-app.get(
-  "/api/profile",
-  authenticateToken,
-  async (req, res) => {
-    try {
-      const result = await pool.query(
-        "SELECT id, name, email, is_admin FROM users WHERE id = $1",
-        [req.user.id]
-      );
+app.get("/api/profile", authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query(
+      "SELECT id, name, email, is_admin FROM users WHERE id = $1",
+      [req.user.id]
+    );
 
-      if (result.rows.length === 0) {
-        return res.status(404).json({
-          message: "User not found",
-        });
-      }
-
-      res.json({
-        message: "Profile access successful",
-        user: result.rows[0],
-      });
-    } catch (error) {
-      console.error("Profile database error:", error);
-
-      res.status(500).json({
-        message: "Server error",
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        message: "User not found",
       });
     }
+
+    res.json({
+      message: "Profile access successful",
+      user: result.rows[0],
+    });
+  } catch (error) {
+    console.error("Profile database error:", error);
+
+    res.status(500).json({
+      message: "Server error",
+    });
   }
-);
+});
 
 // ======================================
 // CREATE APPOINTMENT
@@ -361,14 +363,8 @@ app.get(
   "/api/my-appointments",
   authenticateToken,
   async (req, res) => {
-    console.log(
-      "My appointments request received"
-    );
-
-    console.log(
-      "Logged-in User ID:",
-      req.user.id
-    );
+    console.log("My appointments request received");
+    console.log("Logged-in User ID:", req.user.id);
 
     try {
       const result = await pool.query(
@@ -420,19 +416,9 @@ app.put(
   async (req, res) => {
     const appointmentId = req.params.id;
 
-    console.log(
-      "Cancel appointment request"
-    );
-
-    console.log(
-      "Appointment ID:",
-      appointmentId
-    );
-
-    console.log(
-      "Logged-in User ID:",
-      req.user.id
-    );
+    console.log("Cancel appointment request");
+    console.log("Appointment ID:", appointmentId);
+    console.log("Logged-in User ID:", req.user.id);
 
     try {
       const result = await pool.query(
@@ -678,7 +664,9 @@ app.put(
 // ======================================
 app.listen(PORT, () => {
   console.log("================================");
-  console.log("Server running on port 5000");
-  console.log("http://localhost:5000");
+  console.log(
+    `Server running on port ${PORT}`
+  );
   console.log("================================");
 });
+

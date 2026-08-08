@@ -18,7 +18,7 @@ function AdminDashboard() {
       }
 
       const response = await fetch(
-        "http://localhost:5000/api/admin/appointments",
+        "https://behealth-hospital.onrender.com/api/admin/appointments",
         {
           method: "GET",
           headers: {
@@ -49,7 +49,7 @@ function AdminDashboard() {
       const token = localStorage.getItem("token");
 
       const response = await fetch(
-        `http://localhost:5000/api/admin/appointments/${id}/status`,
+        `https://behealth-hospital.onrender.com/api/admin/appointments/${id}/status`,
         {
           method: "PUT",
           headers: {
@@ -80,16 +80,10 @@ function AdminDashboard() {
           )
         );
       } else {
-        alert(
-          data.message || "Unable to update status"
-        );
+        alert(data.message || "Unable to update status");
       }
     } catch (error) {
-      console.error(
-        "Status update error:",
-        error
-      );
-
+      console.error("Status update error:", error);
       alert("Cannot connect to backend");
     }
   }
@@ -131,9 +125,7 @@ function AdminDashboard() {
               background: "#fff",
             }}
           >
-            <h2>
-              Appointment #{appointment.id}
-            </h2>
+            <h2>Appointment #{appointment.id}</h2>
 
             <p>
               <strong>Patient:</strong>{" "}
@@ -157,8 +149,7 @@ function AdminDashboard() {
 
             <p>
               <strong>Problem:</strong>{" "}
-              {appointment.problem ||
-                "Not provided"}
+              {appointment.problem || "Not provided"}
             </p>
 
             <p>
@@ -195,21 +186,10 @@ function AdminDashboard() {
                 padding: "8px",
               }}
             >
-              <option value="Pending">
-                Pending
-              </option>
-
-              <option value="Confirmed">
-                Confirmed
-              </option>
-
-              <option value="Completed">
-                Completed
-              </option>
-
-              <option value="Cancelled">
-                Cancelled
-              </option>
+              <option value="Pending">Pending</option>
+              <option value="Confirmed">Confirmed</option>
+              <option value="Completed">Completed</option>
+              <option value="Cancelled">Cancelled</option>
             </select>
           </div>
         ))
@@ -219,3 +199,4 @@ function AdminDashboard() {
 }
 
 export default AdminDashboard;
+
