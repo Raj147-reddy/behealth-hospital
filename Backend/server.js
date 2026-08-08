@@ -37,8 +37,17 @@ const pool = new Pool({
 // ======================================
 // CORS
 // ======================================
-app.use(cors());
+app.use(
+  cors({
+    origin: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 
+// ======================================
+// JSON
+// ======================================
 app.use(express.json());
 
 // ======================================
@@ -145,8 +154,10 @@ app.post("/api/register", async (req, res) => {
 app.post("/api/login", async (req, res) => {
   const { email, password } = req.body;
 
-  console.log("Login request received");
+  console.log("================================");
+  console.log("LOGIN REQUEST");
   console.log("Email:", email);
+  console.log("================================");
 
   if (!email || !password) {
     return res.status(400).json({
@@ -156,11 +167,20 @@ app.post("/api/login", async (req, res) => {
 
   try {
     const result = await pool.query(
-      "SELECT id, name, email, password, is_admin FROM users WHERE email = $1",
+      `SELECT
+        id,
+        name,
+        email,
+        password,
+        is_admin
+       FROM users
+       WHERE email = $1`,
       [email]
     );
 
     if (result.rows.length === 0) {
+      console.log("User not found");
+
       return res.status(401).json({
         message: "Invalid email or password",
       });
@@ -174,6 +194,8 @@ app.post("/api/login", async (req, res) => {
     );
 
     if (!passwordMatch) {
+      console.log("Incorrect password");
+
       return res.status(401).json({
         message: "Invalid email or password",
       });
@@ -191,7 +213,8 @@ app.post("/api/login", async (req, res) => {
       }
     );
 
-    console.log("JWT token created successfully");
+    console.log("Login successful");
+    console.log("User ID:", user.id);
 
     res.json({
       message: "Login successful",
@@ -237,7 +260,10 @@ function authenticateToken(req, res, next) {
 
     req.user = decoded;
 
-    console.log("Authenticated user ID:", decoded.id);
+    console.log(
+      "Authenticated user ID:",
+      decoded.id
+    );
 
     next();
   } catch (error) {
@@ -258,31 +284,44 @@ function authenticateToken(req, res, next) {
 // ======================================
 // PROFILE
 // ======================================
-app.get("/api/profile", authenticateToken, async (req, res) => {
-  try {
-    const result = await pool.query(
-      "SELECT id, name, email, is_admin FROM users WHERE id = $1",
-      [req.user.id]
-    );
+app.get(
+  "/api/profile",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const result = await pool.query(
+        `SELECT
+          id,
+          name,
+          email,
+          is_admin
+         FROM users
+         WHERE id = $1`,
+        [req.user.id]
+      );
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        message: "User not found",
+      if (result.rows.length === 0) {
+        return res.status(404).json({
+          message: "User not found",
+        });
+      }
+
+      res.json({
+        message: "Profile access successful",
+        user: result.rows[0],
+      });
+    } catch (error) {
+      console.error(
+        "Profile database error:",
+        error
+      );
+
+      res.status(500).json({
+        message: "Server error",
       });
     }
-
-    res.json({
-      message: "Profile access successful",
-      user: result.rows[0],
-    });
-  } catch (error) {
-    console.error("Profile database error:", error);
-
-    res.status(500).json({
-      message: "Server error",
-    });
   }
-});
+);
 
 // ======================================
 // CREATE APPOINTMENT
@@ -299,13 +338,24 @@ app.post(
       problem,
     } = req.body;
 
-    console.log("Appointment request received");
+    console.log(
+      "Appointment request received"
+    );
+
     console.log("Name:", name);
     console.log("Email:", email);
     console.log("Department:", department);
-    console.log("Logged-in User ID:", req.user.id);
+    console.log(
+      "Logged-in User ID:",
+      req.user.id
+    );
 
-    if (!name || !email || !phone || !department) {
+    if (
+      !name ||
+      !email ||
+      !phone ||
+      !department
+    ) {
       return res.status(400).json({
         message:
           "Name, email, phone and department are required",
@@ -315,18 +365,25 @@ app.post(
     try {
       const result = await pool.query(
         `INSERT INTO appointments
-        (name, email, phone, department, problem, user_id)
+        (
+          name,
+          email,
+          phone,
+          department,
+          problem,
+          user_id
+        )
         VALUES ($1, $2, $3, $4, $5, $6)
         RETURNING
-        id,
-        name,
-        email,
-        phone,
-        department,
-        problem,
-        user_id,
-        status,
-        created_at`,
+          id,
+          name,
+          email,
+          phone,
+          department,
+          problem,
+          user_id,
+          status,
+          created_at`,
         [
           name,
           email,
@@ -337,10 +394,13 @@ app.post(
         ]
       );
 
-      console.log("Appointment created successfully");
+      console.log(
+        "Appointment created successfully"
+      );
 
       res.status(201).json({
-        message: "Appointment booked successfully",
+        message:
+          "Appointment booked successfully",
         appointment: result.rows[0],
       });
     } catch (error) {
@@ -363,8 +423,14 @@ app.get(
   "/api/my-appointments",
   authenticateToken,
   async (req, res) => {
-    console.log("My appointments request received");
-    console.log("Logged-in User ID:", req.user.id);
+    console.log(
+      "My appointments request received"
+    );
+
+    console.log(
+      "Logged-in User ID:",
+      req.user.id
+    );
 
     try {
       const result = await pool.query(
@@ -416,9 +482,9 @@ app.put(
   async (req, res) => {
     const appointmentId = req.params.id;
 
-    console.log("Cancel appointment request");
-    console.log("Appointment ID:", appointmentId);
-    console.log("Logged-in User ID:", req.user.id);
+    console.log(
+      "Cancel appointment request"
+    );
 
     try {
       const result = await pool.query(
@@ -428,15 +494,15 @@ app.put(
          AND user_id = $2
          AND status = 'Pending'
          RETURNING
-         id,
-         name,
-         email,
-         phone,
-         department,
-         problem,
-         user_id,
-         status,
-         created_at`,
+           id,
+           name,
+           email,
+           phone,
+           department,
+           problem,
+           user_id,
+           status,
+           created_at`,
         [
           appointmentId,
           req.user.id,
@@ -449,10 +515,6 @@ app.put(
             "Appointment not found or cannot be cancelled",
         });
       }
-
-      console.log(
-        "Appointment cancelled successfully"
-      );
 
       res.json({
         message:
@@ -475,28 +537,43 @@ app.put(
 // ======================================
 // ADMIN AUTHENTICATION
 // ======================================
-async function authenticateAdmin(req, res, next) {
-  const authHeader = req.headers.authorization;
+async function authenticateAdmin(
+  req,
+  res,
+  next
+) {
+  const authHeader =
+    req.headers.authorization;
 
   if (!authHeader) {
     return res.status(401).json({
-      message: "Authorization token required",
+      message:
+        "Authorization token required",
     });
   }
 
-  const token = authHeader.split(" ")[1];
+  const token =
+    authHeader.split(" ")[1];
 
   if (!token) {
     return res.status(401).json({
-      message: "Invalid authorization format",
+      message:
+        "Invalid authorization format",
     });
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(
+      token,
+      JWT_SECRET
+    );
 
     const result = await pool.query(
-      `SELECT id, name, email, is_admin
+      `SELECT
+        id,
+        name,
+        email,
+        is_admin
        FROM users
        WHERE id = $1`,
       [decoded.id]
@@ -530,7 +607,9 @@ async function authenticateAdmin(req, res, next) {
       error
     );
 
-    if (error.name === "TokenExpiredError") {
+    if (
+      error.name === "TokenExpiredError"
+    ) {
       return res.status(401).json({
         message: "Token expired",
       });
@@ -595,7 +674,9 @@ app.put(
   "/api/admin/appointments/:id/status",
   authenticateAdmin,
   async (req, res) => {
-    const appointmentId = req.params.id;
+    const appointmentId =
+      req.params.id;
+
     const { status } = req.body;
 
     const allowedStatuses = [
@@ -605,9 +686,12 @@ app.put(
       "Cancelled",
     ];
 
-    if (!allowedStatuses.includes(status)) {
+    if (
+      !allowedStatuses.includes(status)
+    ) {
       return res.status(400).json({
-        message: "Invalid appointment status",
+        message:
+          "Invalid appointment status",
       });
     }
 
@@ -617,21 +701,25 @@ app.put(
          SET status = $1
          WHERE id = $2
          RETURNING
-         id,
-         name,
-         email,
-         phone,
-         department,
-         problem,
-         user_id,
-         status,
-         created_at`,
-        [status, appointmentId]
+           id,
+           name,
+           email,
+           phone,
+           department,
+           problem,
+           user_id,
+           status,
+           created_at`,
+        [
+          status,
+          appointmentId,
+        ]
       );
 
       if (result.rows.length === 0) {
         return res.status(404).json({
-          message: "Appointment not found",
+          message:
+            "Appointment not found",
         });
       }
 
@@ -663,10 +751,16 @@ app.put(
 // START SERVER
 // ======================================
 app.listen(PORT, () => {
-  console.log("================================");
+  console.log(
+    "================================"
+  );
+
   console.log(
     `Server running on port ${PORT}`
   );
-  console.log("================================");
+
+  console.log(
+    "================================"
+  );
 });
 
