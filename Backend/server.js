@@ -17,7 +17,6 @@ const app = express();
 
 const PORT = process.env.PORT || 5000;
 
-// IMPORTANT:
 // JWT_SECRET MUST be configured in Render Environment Variables
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -353,8 +352,6 @@ app.post("/api/login", async (req, res) => {
 
     // --------------------------------------------------
     // CREATE JWT
-    // IMPORTANT:
-    // SAME JWT_SECRET IS USED FOR SIGN AND VERIFY
     // --------------------------------------------------
 
     const token = jwt.sign(
@@ -905,17 +902,19 @@ app.put(
 // SERVE REACT FRONTEND
 // ======================================================
 
-const frontendPath =
-  path.join(
-    __dirname,
-    "../frontend/dist"
-  );
+const frontendPath = path.join(
+  __dirname,
+  "../frontend/dist"
+);
 
 app.use(
   express.static(frontendPath)
 );
 
-app.get("*", (req, res) => {
+// IMPORTANT:
+// Express 5 does NOT accept app.get("*").
+// This is the Express 5 compatible wildcard.
+app.get("/{*splat}", (req, res) => {
   res.sendFile(
     path.join(
       frontendPath,

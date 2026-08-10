@@ -1,0 +1,42 @@
+.my-appointments {
+  width: 100%;
+  max-width: 1000px;
+  margin: 30px auto;
+  padding: 20px;
+}
+
+.my-appointments h2 {
+  text-align: center;
+  margin-bottom: 25px;
+}
+
+.appointments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.appointment-card {
+  padding: 20px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.appointment-card h3 {
+  margin-top: 0;
+  margin-bottom: 15px;
+}
+
+.appointment-card p {
+  margin: 8px 0;
+}
+
+.appointment-card button {
+  margin-top: 15px;
+  padding: 10px 18px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
