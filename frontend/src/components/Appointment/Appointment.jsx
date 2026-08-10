@@ -1,112 +1,195 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import "./Appointment.css";
 
-function MyAppointments() {
-  const [appointments, setAppointments] = useState([]);
-  const [loading, setLoading] = useState(true);
+const API_URL = "https://behealth-hospital-1.onrender.com";
 
-  useEffect(() => {
-    fetchAppointments();
-  }, []);
+function Appointment() {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [department, setDepartment] = useState("");
+  const [problem, setProblem] = useState("");
 
-  async function fetchAppointments() {
+  async function handleSubmit(e) {
+    e.preventDefault();
+
     const token = localStorage.getItem("token");
+
+    console.log("================================");
+    console.log("BOOK APPOINTMENT");
+    console.log("TOKEN EXISTS:", !!token);
+    console.log(
+      "TOKEN LENGTH:",
+      token ? token.length : 0
+    );
+    console.log("================================");
 
     if (!token) {
       alert("Please login first");
-      setLoading(false);
+      return;
+    }
+
+    if (
+      !name ||
+      !email ||
+      !phone ||
+      !department ||
+      !problem
+    ) {
+      alert("Please fill all appointment fields");
       return;
     }
 
     try {
       const response = await fetch(
-        "https://behealth-hospital-1.onrender.com/api/my-appointments",
+        `${API_URL}/api/appointments`,
         {
-          method: "GET",
+          method: "POST",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
+          body: JSON.stringify({
+            name,
+            email,
+            phone,
+            department,
+            problem,
+          }),
         }
       );
 
       const data = await response.json();
 
-      console.log("My appointments:", data);
+      console.log(
+        "Appointment response:",
+        data
+      );
 
-      if (response.ok) {
-        setAppointments(data.appointments || []);
-      } else {
-        alert(data.message || "Unable to load appointments");
+      if (response.status === 401) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+
+        alert(
+          "Session expired. Please login again."
+        );
+
+        return;
       }
-    } catch (error) {
-      console.error("My appointments error:", error);
-      alert("Cannot connect to backend");
-    } finally {
-      setLoading(false);
-    }
-  }
 
-  if (loading) {
-    return <h2>Loading appointments...</h2>;
+      if (!response.ok) {
+        alert(
+          data.message ||
+            "Appointment booking failed"
+        );
+
+        return;
+      }
+
+      alert(
+        "Appointment booked successfully!"
+      );
+
+      setName("");
+      setEmail("");
+      setPhone("");
+      setDepartment("");
+      setProblem("");
+
+    } catch (error) {
+      console.error(
+        "Appointment booking error:",
+        error
+      );
+
+      alert("Cannot connect to backend");
+    }
   }
 
   return (
     <div className="appointment-container">
-      <h2>My Appointments</h2>
 
-      {appointments.length === 0 ? (
-        <p>No appointments found.</p>
-      ) : (
-        appointments.map((appointment) => (
-          <div
-            key={appointment.id}
-            className="appointment-card"
-          >
-            <h3>Appointment #{appointment.id}</h3>
+      <h2>Book Appointment</h2>
 
-            <p>
-              <strong>Name:</strong>{" "}
-              {appointment.name}
-            </p>
+      <form
+        onSubmit={handleSubmit}
+        className="appointment-form"
+      >
 
-            <p>
-              <strong>Email:</strong>{" "}
-              {appointment.email}
-            </p>
+        <input
+          type="text"
+          placeholder="Name"
+          value={name}
+          onChange={(e) =>
+            setName(e.target.value)
+          }
+        />
 
-            <p>
-              <strong>Phone:</strong>{" "}
-              {appointment.phone}
-            </p>
+        <input
+          type="email"
+          placeholder="Email"
+          value={email}
+          onChange={(e) =>
+            setEmail(e.target.value)
+          }
+        />
 
-            <p>
-              <strong>Department:</strong>{" "}
-              {appointment.department}
-            </p>
+        <input
+          type="text"
+          placeholder="Phone"
+          value={phone}
+          onChange={(e) =>
+            setPhone(e.target.value)
+          }
+        />
 
-            <p>
-              <strong>Problem:</strong>{" "}
-              {appointment.problem || "Not provided"}
-            </p>
+        <select
+          value={department}
+          onChange={(e) =>
+            setDepartment(e.target.value)
+          }
+        >
+          <option value="">
+            Select Department
+          </option>
 
-            <p>
-              <strong>Status:</strong>{" "}
-              {appointment.status || "Pending"}
-            </p>
+          <option value="Cardiology">
+            Cardiology
+          </option>
 
-            <p>
-              <strong>Booked:</strong>{" "}
-              {appointment.created_at
-                ? new Date(
-                    appointment.created_at
-                  ).toLocaleString()
-                : "Not available"}
-            </p>
-          </div>
-        ))
-      )}
+          <option value="Neurology">
+            Neurology
+          </option>
+
+          <option value="Orthopedics">
+            Orthopedics
+          </option>
+
+          <option value="Dermatology">
+            Dermatology
+          </option>
+
+          <option value="General Medicine">
+            General Medicine
+          </option>
+        </select>
+
+        <textarea
+          placeholder="Describe your problem"
+          value={problem}
+          onChange={(e) =>
+            setProblem(e.target.value)
+          }
+        />
+
+        <button type="submit">
+          Book Appointment
+        </button>
+
+      </form>
+
     </div>
   );
 }
 
-export default MyAppointments;
+export default Appointment;
