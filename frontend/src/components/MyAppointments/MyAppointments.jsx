@@ -9,20 +9,21 @@ function MyAppointments() {
   }, []);
 
   async function fetchAppointments() {
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      alert("Please login first");
+      setLoading(false);
+      return;
+    }
+
     try {
-      const token = localStorage.getItem("token");
-
-      if (!token) {
-        alert("Please login again");
-        setLoading(false);
-        return;
-      }
-
       const response = await fetch(
-        "https://behealth-hospital.onrender.com/api/appointments",
+     "https://behealth-hospital-1.onrender.com/api/my-appointments",
         {
           method: "GET",
           headers: {
+            "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
         }
@@ -46,30 +47,18 @@ function MyAppointments() {
   }
 
   if (loading) {
-    return (
-      <div>
-        <h2>Loading appointments...</h2>
-      </div>
-    );
+    return <h2>Loading appointments...</h2>;
   }
 
   return (
-    <div>
+    <div className="appointment-container">
       <h2>My Appointments</h2>
 
       {appointments.length === 0 ? (
         <p>No appointments found.</p>
       ) : (
         appointments.map((appointment) => (
-          <div
-            key={appointment.id}
-            style={{
-              border: "1px solid #ddd",
-              borderRadius: "10px",
-              padding: "20px",
-              marginTop: "20px",
-            }}
-          >
+          <div key={appointment.id} className="appointment-card">
             <h3>Appointment #{appointment.id}</h3>
 
             <p>
@@ -101,9 +90,7 @@ function MyAppointments() {
             <p>
               <strong>Booked:</strong>{" "}
               {appointment.created_at
-                ? new Date(
-                    appointment.created_at
-                  ).toLocaleString()
+                ? new Date(appointment.created_at).toLocaleString()
                 : "Not available"}
             </p>
           </div>
