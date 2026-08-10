@@ -1,125 +1,255 @@
+// ======================================================
+// BEHEALTH HOSPITAL - COMPLETE BACKEND SERVER
+// ======================================================
+
 const express = require("express");
 const cors = require("cors");
+const path = require("path");
 const { Pool } = require("pg");
-const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-require("dotenv").config();
+const bcrypt = require("bcryptjs");
 
 const app = express();
 
-// ======================================
-// PORT
-// ======================================
+// ======================================================
+// ENVIRONMENT
+// ======================================================
+
 const PORT = process.env.PORT || 5000;
 
-// ======================================
-// JWT SECRET
-// ======================================
-const JWT_SECRET =
-  process.env.JWT_SECRET || "behealth_secret_key_change_this";
+// IMPORTANT:
+// JWT_SECRET MUST be configured in Render Environment Variables
+const JWT_SECRET = process.env.JWT_SECRET;
 
-// ======================================
+if (!JWT_SECRET) {
+  console.error("ERROR: JWT_SECRET is missing on Render");
+  process.exit(1);
+}
+
+// ======================================================
 // DATABASE
-// ======================================
-console.log("DB USER:", process.env.DB_USER);
-console.log("DB HOST:", process.env.DB_HOST);
-console.log("DB NAME:", process.env.DB_NAME);
-console.log("DB PORT:", process.env.DB_PORT);
+// ======================================================
 
 const pool = new Pool({
-  user: process.env.DB_USER,
-  host: process.env.DB_HOST,
-  database: process.env.DB_NAME,
-  password: process.env.DB_PASSWORD,
-  port: process.env.DB_PORT,
+  connectionString: process.env.DATABASE_URL,
+
+  ssl:
+    process.env.NODE_ENV === "production"
+      ? { rejectUnauthorized: false }
+      : false,
 });
 
-// ======================================
-// CORS
-// ======================================
+pool.on("error", (error) => {
+  console.error("Unexpected PostgreSQL error:", error);
+});
+
+// ======================================================
+// MIDDLEWARE
+// ======================================================
+
 app.use(
   cors({
     origin: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
   })
 );
 
-// ======================================
-// JSON
-// ======================================
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// ======================================
-// HOME
-// ======================================
-app.get("/", (req, res) => {
-  res.json({
-    message: "BeHealth Hospital Backend Running",
-  });
-});
+// ======================================================
+// TEST ROUTE
+// ======================================================
 
-// ======================================
-// DATABASE TEST
-// ======================================
-app.get("/api/db-test", async (req, res) => {
+app.get("/api/health", async (req, res) => {
   try {
-    const result = await pool.query("SELECT NOW()");
+    await pool.query("SELECT 1");
 
     res.json({
-      message: "PostgreSQL connected successfully",
-      time: result.rows[0].now,
+      message: "BeHealth Hospital API is running",
+      database: "connected",
     });
   } catch (error) {
-    console.error("Database connection error:", error);
+    console.error("Health check error:", error);
 
     res.status(500).json({
       message: "Database connection failed",
-      error: error.message,
     });
   }
 });
 
-// ======================================
-// TEST API
-// ======================================
-app.get("/api/test", (req, res) => {
-  res.json({
-    message: "API is working successfully",
-  });
-});
+// ======================================================
+// JWT AUTHENTICATION
+// ======================================================
 
-app.post("/api/test", (req, res) => {
-  console.log("Data received from frontend:");
-  console.log(req.body);
+function authenticateToken(req, res, next) {
+  const authHeader = req.headers.authorization;
 
-  res.json({
-    message: "POST request received successfully",
-    data: req.body,
-  });
-});
+  console.log("================================");
+  console.log("AUTHENTICATION REQUEST");
+  console.log("Request:", req.method, req.originalUrl);
+  console.log("AUTH HEADER EXISTS:", !!authHeader);
 
-// ======================================
-// REGISTER
-// ======================================
-app.post("/api/register", async (req, res) => {
-  const { name, email, password } = req.body;
+  if (authHeader) {
+    console.log(
+      "AUTH HEADER:",
+      authHeader.substring(0, 35) + "..."
+    );
+  } else {
+    console.log("AUTH HEADER: NONE");
+  }
 
-  console.log("Register request received");
-  console.log("Name:", name);
-  console.log("Email:", email);
+  console.log(
+    "JWT SECRET LENGTH:",
+    JWT_SECRET.length
+  );
 
-  if (!name || !email || !password) {
-    return res.status(400).json({
-      message: "Name, email and password are required",
+  // --------------------------------------------------
+  // CHECK AUTHORIZATION HEADER
+  // --------------------------------------------------
+
+  if (!authHeader) {
+    console.log(
+      "ERROR: Authorization header missing"
+    );
+
+    console.log("================================");
+
+    return res.status(401).json({
+      message: "Authorization token required",
     });
   }
+
+  // --------------------------------------------------
+  // CHECK BEARER FORMAT
+  // --------------------------------------------------
+
+  const parts = authHeader.trim().split(/\s+/);
+
+  console.log(
+    "AUTH HEADER PARTS:",
+    parts.length
+  );
+
+  console.log(
+    "AUTH TYPE:",
+    parts[0]
+  );
+
+  if (
+    parts.length !== 2 ||
+    parts[0] !== "Bearer"
+  ) {
+    console.log(
+      "ERROR: Invalid authorization format"
+    );
+
+    console.log("================================");
+
+    return res.status(401).json({
+      message: "Invalid authorization format",
+    });
+  }
+
+  const token = parts[1];
+
+  console.log(
+    "TOKEN LENGTH:",
+    token.length
+  );
+
+  console.log(
+    "TOKEN PREVIEW:",
+    token.substring(0, 25) + "..."
+  );
+
+  // --------------------------------------------------
+  // VERIFY JWT
+  // --------------------------------------------------
 
   try {
-    const existingUser = await pool.query(
-      "SELECT id FROM users WHERE email = $1",
-      [email]
+    const decoded = jwt.verify(
+      token,
+      JWT_SECRET
     );
+
+    console.log(
+      "JWT VERIFICATION SUCCESSFUL"
+    );
+
+    console.log(
+      "DECODED USER ID:",
+      decoded.id
+    );
+
+    console.log(
+      "DECODED EMAIL:",
+      decoded.email
+    );
+
+    console.log(
+      "TOKEN EXPIRATION:",
+      decoded.exp
+    );
+
+    console.log("================================");
+
+    req.user = decoded;
+
+    next();
+  } catch (error) {
+    console.error("================================");
+    console.error(
+      "JWT VERIFICATION FAILED"
+    );
+
+    console.error(
+      "ERROR NAME:",
+      error.name
+    );
+
+    console.error(
+      "ERROR MESSAGE:",
+      error.message
+    );
+
+    console.error("================================");
+
+    return res.status(401).json({
+      message: "Invalid token",
+      error: error.name,
+    });
+  }
+}
+
+// ======================================================
+// REGISTER
+// ======================================================
+
+app.post("/api/register", async (req, res) => {
+  try {
+    const {
+      name,
+      email,
+      password,
+    } = req.body;
+
+    if (!name || !email || !password) {
+      return res.status(400).json({
+        message: "Please fill all fields",
+      });
+    }
+
+    const normalizedEmail =
+      email.trim().toLowerCase();
+
+    const existingUser =
+      await pool.query(
+        `SELECT id
+         FROM users
+         WHERE LOWER(email) = LOWER($1)`,
+        [normalizedEmail]
+      );
 
     if (existingUser.rows.length > 0) {
       return res.status(409).json({
@@ -127,98 +257,154 @@ app.post("/api/register", async (req, res) => {
       });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword =
+      await bcrypt.hash(password, 10);
 
-    await pool.query(
-      "INSERT INTO users (name, email, password) VALUES ($1, $2, $3)",
-      [name, email, hashedPassword]
-    );
-
-    console.log("New user registered successfully");
+    const result =
+      await pool.query(
+        `INSERT INTO users
+          (name, email, password)
+         VALUES
+          ($1, $2, $3)
+         RETURNING
+          id,
+          name,
+          email,
+          is_admin`,
+        [
+          name.trim(),
+          normalizedEmail,
+          hashedPassword,
+        ]
+      );
 
     res.status(201).json({
       message: "Registration successful",
+      user: result.rows[0],
     });
   } catch (error) {
-    console.error("Registration database error:", error);
+    console.error(
+      "Register error:",
+      error
+    );
 
     res.status(500).json({
       message: "Server error",
+      error: error.message,
     });
   }
 });
 
-// ======================================
+// ======================================================
 // LOGIN
-// ======================================
+// ======================================================
+
 app.post("/api/login", async (req, res) => {
-  const { email, password } = req.body;
-
-  console.log("================================");
-  console.log("LOGIN REQUEST");
-  console.log("Email:", email);
-  console.log("================================");
-
-  if (!email || !password) {
-    return res.status(400).json({
-      message: "Email and password are required",
-    });
-  }
-
   try {
-    const result = await pool.query(
-      `SELECT
-        id,
-        name,
-        email,
-        password,
-        is_admin
-       FROM users
-       WHERE email = $1`,
-      [email]
-    );
+    const {
+      email,
+      password,
+    } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({
+        message:
+          "Email and password are required",
+      });
+    }
+
+    const normalizedEmail =
+      email.trim().toLowerCase();
+
+    const result =
+      await pool.query(
+        `SELECT
+          id,
+          name,
+          email,
+          password,
+          is_admin
+         FROM users
+         WHERE LOWER(email) = LOWER($1)`,
+        [normalizedEmail]
+      );
 
     if (result.rows.length === 0) {
-      console.log("User not found");
-
       return res.status(401).json({
-        message: "Invalid email or password",
+        message:
+          "Invalid email or password",
       });
     }
 
     const user = result.rows[0];
 
-    const passwordMatch = await bcrypt.compare(
-      password,
-      user.password
-    );
+    const passwordMatch =
+      await bcrypt.compare(
+        password,
+        user.password
+      );
 
     if (!passwordMatch) {
-      console.log("Incorrect password");
-
       return res.status(401).json({
-        message: "Invalid email or password",
+        message:
+          "Invalid email or password",
       });
     }
+
+    // --------------------------------------------------
+    // CREATE JWT
+    // IMPORTANT:
+    // SAME JWT_SECRET IS USED FOR SIGN AND VERIFY
+    // --------------------------------------------------
 
     const token = jwt.sign(
       {
         id: user.id,
         email: user.email,
-        is_admin: user.is_admin,
       },
       JWT_SECRET,
       {
-        expiresIn: "1h",
+        expiresIn: "7d",
       }
     );
 
-    console.log("Login successful");
-    console.log("User ID:", user.id);
+    console.log(
+      "================================"
+    );
+
+    console.log(
+      "JWT CREATED"
+    );
+
+    console.log(
+      "USER ID:",
+      user.id
+    );
+
+    console.log(
+      "USER EMAIL:",
+      user.email
+    );
+
+    console.log(
+      "JWT SECRET LENGTH:",
+      JWT_SECRET.length
+    );
+
+    console.log(
+      "TOKEN LENGTH:",
+      token.length
+    );
+
+    console.log(
+      "================================"
+    );
 
     res.json({
       message: "Login successful",
-      token: token,
+
+      token,
+
       user: {
         id: user.id,
         name: user.name,
@@ -227,78 +413,38 @@ app.post("/api/login", async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Login database error:", error);
+    console.error(
+      "Login error:",
+      error
+    );
 
     res.status(500).json({
       message: "Server error",
+      error: error.message,
     });
   }
 });
 
-// ======================================
-// AUTHENTICATION MIDDLEWARE
-// ======================================
-function authenticateToken(req, res, next) {
-  const authHeader = req.headers.authorization;
+// ======================================================
+// GET CURRENT USER
+// ======================================================
 
-  if (!authHeader) {
-    return res.status(401).json({
-      message: "Authorization token required",
-    });
-  }
-
-  const token = authHeader.split(" ")[1];
-
-  if (!token) {
-    return res.status(401).json({
-      message: "Invalid authorization format",
-    });
-  }
-
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-
-    req.user = decoded;
-
-    console.log(
-      "Authenticated user ID:",
-      decoded.id
-    );
-
-    next();
-  } catch (error) {
-    console.error("JWT verification error:", error);
-
-    if (error.name === "TokenExpiredError") {
-      return res.status(401).json({
-        message: "Token expired",
-      });
-    }
-
-    return res.status(401).json({
-      message: "Invalid token",
-    });
-  }
-}
-
-// ======================================
-// PROFILE
-// ======================================
 app.get(
   "/api/profile",
   authenticateToken,
   async (req, res) => {
     try {
-      const result = await pool.query(
-        `SELECT
-          id,
-          name,
-          email,
-          is_admin
-         FROM users
-         WHERE id = $1`,
-        [req.user.id]
-      );
+      const result =
+        await pool.query(
+          `SELECT
+            id,
+            name,
+            email,
+            is_admin
+           FROM users
+           WHERE id = $1`,
+          [req.user.id]
+        );
 
       if (result.rows.length === 0) {
         return res.status(404).json({
@@ -307,12 +453,11 @@ app.get(
       }
 
       res.json({
-        message: "Profile access successful",
         user: result.rows[0],
       });
     } catch (error) {
       console.error(
-        "Profile database error:",
+        "Profile error:",
         error
       );
 
@@ -323,182 +468,139 @@ app.get(
   }
 );
 
-// ======================================
-// CREATE APPOINTMENT
-// ======================================
+// ======================================================
+// BOOK APPOINTMENT
+// ======================================================
+
 app.post(
   "/api/appointments",
   authenticateToken,
   async (req, res) => {
-    const {
-      name,
-      email,
-      phone,
-      department,
-      problem,
-    } = req.body;
-
-    console.log(
-      "Appointment request received"
-    );
-
-    console.log("Name:", name);
-    console.log("Email:", email);
-    console.log("Department:", department);
-    console.log(
-      "Logged-in User ID:",
-      req.user.id
-    );
-
-    if (
-      !name ||
-      !email ||
-      !phone ||
-      !department
-    ) {
-      return res.status(400).json({
-        message:
-          "Name, email, phone and department are required",
-      });
-    }
-
     try {
-      const result = await pool.query(
-        `INSERT INTO appointments
-        (
-          name,
-          email,
-          phone,
-          department,
-          problem,
-          user_id
-        )
-        VALUES ($1, $2, $3, $4, $5, $6)
-        RETURNING
-          id,
-          name,
-          email,
-          phone,
-          department,
-          problem,
-          user_id,
-          status,
-          created_at`,
-        [
-          name,
-          email,
-          phone,
-          department,
-          problem || null,
-          req.user.id,
-        ]
-      );
+      const {
+        name,
+        email,
+        phone,
+        department,
+        problem,
+      } = req.body;
 
-      console.log(
-        "Appointment created successfully"
-      );
+      if (
+        !name ||
+        !email ||
+        !phone ||
+        !department ||
+        !problem
+      ) {
+        return res.status(400).json({
+          message:
+            "Please fill all appointment fields",
+        });
+      }
+
+      const result =
+        await pool.query(
+          `INSERT INTO appointments
+            (
+              name,
+              email,
+              phone,
+              department,
+              problem,
+              user_id,
+              status
+            )
+           VALUES
+            ($1, $2, $3, $4, $5, $6, 'Pending')
+           RETURNING
+            id,
+            name,
+            email,
+            phone,
+            department,
+            problem,
+            user_id,
+            status,
+            created_at`,
+          [
+            name,
+            email,
+            phone,
+            department,
+            problem,
+            req.user.id,
+          ]
+        );
 
       res.status(201).json({
         message:
           "Appointment booked successfully",
-        appointment: result.rows[0],
+
+        appointment:
+          result.rows[0],
       });
     } catch (error) {
       console.error(
-        "Appointment database error:",
+        "Book appointment error:",
         error
       );
 
       res.status(500).json({
         message: "Server error",
+        error: error.message,
       });
     }
   }
 );
 
-// ======================================
-// GET ALL APPOINTMENTS
-// ======================================
-app.get(
-  "/api/appointments",
-  authenticateToken,
-  async (req, res) => {
-    console.log(
-      "Get all appointments request received"
-    );
+// ======================================================
+// GET MY APPOINTMENTS
+// ======================================================
 
-    try {
-      const result = await pool.query(
-        `SELECT
-          id,
-          name,
-          email,
-          phone,
-          department,
-          problem,
-          user_id,
-          status,
-          created_at
-         FROM appointments
-         ORDER BY created_at DESC`
-      );
-
-      console.log(
-        "All appointments found:",
-        result.rows.length
-      );
-
-      res.json({
-        message:
-          "Appointments fetched successfully",
-        appointments: result.rows,
-      });
-    } catch (error) {
-      console.error(
-        "Get appointments database error:",
-        error
-      );
-
-      res.status(500).json({
-        message: "Server error",
-      });
-    }
-  }
-);
-
-// ======================================
-// MY APPOINTMENTS
-// ======================================
 app.get(
   "/api/my-appointments",
   authenticateToken,
   async (req, res) => {
     console.log(
-      "My appointments request received"
+      "================================"
     );
 
     console.log(
-      "Logged-in User ID:",
+      "GET MY APPOINTMENTS"
+    );
+
+    console.log(
+      "USER ID:",
       req.user.id
     );
 
+    console.log(
+      "USER EMAIL:",
+      req.user.email
+    );
+
+    console.log(
+      "================================"
+    );
+
     try {
-      const result = await pool.query(
-        `SELECT
-          id,
-          name,
-          email,
-          phone,
-          department,
-          problem,
-          user_id,
-          status,
-          created_at
-         FROM appointments
-         WHERE user_id = $1
-         ORDER BY created_at DESC`,
-        [req.user.id]
-      );
+      const result =
+        await pool.query(
+          `SELECT
+            id,
+            name,
+            email,
+            phone,
+            department,
+            problem,
+            user_id,
+            status,
+            created_at
+           FROM appointments
+           WHERE user_id = $1
+           ORDER BY created_at DESC`,
+          [req.user.id]
+        );
 
       console.log(
         "Appointments found:",
@@ -508,7 +610,9 @@ app.get(
       res.json({
         message:
           "Appointments fetched successfully",
-        appointments: result.rows,
+
+        appointments:
+          result.rows,
       });
     } catch (error) {
       console.error(
@@ -518,46 +622,46 @@ app.get(
 
       res.status(500).json({
         message: "Server error",
+        error: error.message,
       });
     }
   }
 );
 
-// ======================================
+// ======================================================
 // CANCEL APPOINTMENT
-// ======================================
+// ======================================================
+
 app.put(
   "/api/appointments/:id/cancel",
   authenticateToken,
   async (req, res) => {
-    const appointmentId = req.params.id;
-
-    console.log(
-      "Cancel appointment request"
-    );
+    const appointmentId =
+      req.params.id;
 
     try {
-      const result = await pool.query(
-        `UPDATE appointments
-         SET status = 'Cancelled'
-         WHERE id = $1
-         AND user_id = $2
-         AND status = 'Pending'
-         RETURNING
-           id,
-           name,
-           email,
-           phone,
-           department,
-           problem,
-           user_id,
-           status,
-           created_at`,
-        [
-          appointmentId,
-          req.user.id,
-        ]
-      );
+      const result =
+        await pool.query(
+          `UPDATE appointments
+           SET status = 'Cancelled'
+           WHERE id = $1
+           AND user_id = $2
+           AND status = 'Pending'
+           RETURNING
+            id,
+            name,
+            email,
+            phone,
+            department,
+            problem,
+            user_id,
+            status,
+            created_at`,
+          [
+            appointmentId,
+            req.user.id,
+          ]
+        );
 
       if (result.rows.length === 0) {
         return res.status(404).json({
@@ -569,7 +673,9 @@ app.put(
       res.json({
         message:
           "Appointment cancelled successfully",
-        appointment: result.rows[0],
+
+        appointment:
+          result.rows[0],
       });
     } catch (error) {
       console.error(
@@ -579,14 +685,16 @@ app.put(
 
       res.status(500).json({
         message: "Server error",
+        error: error.message,
       });
     }
   }
 );
 
-// ======================================
+// ======================================================
 // ADMIN AUTHENTICATION
-// ======================================
+// ======================================================
+
 async function authenticateAdmin(
   req,
   res,
@@ -602,32 +710,39 @@ async function authenticateAdmin(
     });
   }
 
-  const token =
-    authHeader.split(" ")[1];
+  const parts =
+    authHeader.trim().split(/\s+/);
 
-  if (!token) {
+  if (
+    parts.length !== 2 ||
+    parts[0] !== "Bearer"
+  ) {
     return res.status(401).json({
       message:
         "Invalid authorization format",
     });
   }
 
-  try {
-    const decoded = jwt.verify(
-      token,
-      JWT_SECRET
-    );
+  const token = parts[1];
 
-    const result = await pool.query(
-      `SELECT
-        id,
-        name,
-        email,
-        is_admin
-       FROM users
-       WHERE id = $1`,
-      [decoded.id]
-    );
+  try {
+    const decoded =
+      jwt.verify(
+        token,
+        JWT_SECRET
+      );
+
+    const result =
+      await pool.query(
+        `SELECT
+          id,
+          name,
+          email,
+          is_admin
+         FROM users
+         WHERE id = $1`,
+        [decoded.id]
+      );
 
     if (result.rows.length === 0) {
       return res.status(404).json({
@@ -635,20 +750,17 @@ async function authenticateAdmin(
       });
     }
 
-    const user = result.rows[0];
+    const user =
+      result.rows[0];
 
     if (user.is_admin !== true) {
       return res.status(403).json({
-        message: "Admin access required",
+        message:
+          "Admin access required",
       });
     }
 
     req.user = user;
-
-    console.log(
-      "Admin authenticated:",
-      user.email
-    );
 
     next();
   } catch (error) {
@@ -657,52 +769,44 @@ async function authenticateAdmin(
       error
     );
 
-    if (
-      error.name === "TokenExpiredError"
-    ) {
-      return res.status(401).json({
-        message: "Token expired",
-      });
-    }
-
     return res.status(401).json({
       message: "Invalid token",
+      error: error.name,
     });
   }
 }
 
-// ======================================
+// ======================================================
 // ADMIN - GET ALL APPOINTMENTS
-// ======================================
+// ======================================================
+
 app.get(
   "/api/admin/appointments",
   authenticateAdmin,
   async (req, res) => {
     try {
-      const result = await pool.query(
-        `SELECT
-          id,
-          name,
-          email,
-          phone,
-          department,
-          problem,
-          user_id,
-          status,
-          created_at
-         FROM appointments
-         ORDER BY created_at DESC`
-      );
-
-      console.log(
-        "Admin appointments found:",
-        result.rows.length
-      );
+      const result =
+        await pool.query(
+          `SELECT
+            id,
+            name,
+            email,
+            phone,
+            department,
+            problem,
+            user_id,
+            status,
+            created_at
+           FROM appointments
+           ORDER BY created_at DESC`
+        );
 
       res.json({
         message:
           "Admin appointments fetched successfully",
-        appointments: result.rows,
+
+        appointments:
+          result.rows,
       });
     } catch (error) {
       console.error(
@@ -712,14 +816,16 @@ app.get(
 
       res.status(500).json({
         message: "Server error",
+        error: error.message,
       });
     }
   }
 );
 
-// ======================================
+// ======================================================
 // ADMIN - UPDATE APPOINTMENT STATUS
-// ======================================
+// ======================================================
+
 app.put(
   "/api/admin/appointments/:id/status",
   authenticateAdmin,
@@ -746,25 +852,26 @@ app.put(
     }
 
     try {
-      const result = await pool.query(
-        `UPDATE appointments
-         SET status = $1
-         WHERE id = $2
-         RETURNING
-           id,
-           name,
-           email,
-           phone,
-           department,
-           problem,
-           user_id,
-           status,
-           created_at`,
-        [
-          status,
-          appointmentId,
-        ]
-      );
+      const result =
+        await pool.query(
+          `UPDATE appointments
+           SET status = $1
+           WHERE id = $2
+           RETURNING
+            id,
+            name,
+            email,
+            phone,
+            department,
+            problem,
+            user_id,
+            status,
+            created_at`,
+          [
+            status,
+            appointmentId,
+          ]
+        );
 
       if (result.rows.length === 0) {
         return res.status(404).json({
@@ -773,16 +880,12 @@ app.put(
         });
       }
 
-      console.log(
-        "Appointment status updated:",
-        appointmentId,
-        status
-      );
-
       res.json({
         message:
           "Appointment status updated successfully",
-        appointment: result.rows[0],
+
+        appointment:
+          result.rows[0],
       });
     } catch (error) {
       console.error(
@@ -792,25 +895,71 @@ app.put(
 
       res.status(500).json({
         message: "Server error",
+        error: error.message,
       });
     }
   }
 );
 
-// ======================================
-// START SERVER
-// ======================================
-app.listen(PORT, () => {
-  console.log(
-    "================================"
+// ======================================================
+// SERVE REACT FRONTEND
+// ======================================================
+
+const frontendPath =
+  path.join(
+    __dirname,
+    "../frontend/dist"
   );
 
-  console.log(
-    `Server running on port ${PORT}`
-  );
+app.use(
+  express.static(frontendPath)
+);
 
-  console.log(
-    "================================"
+app.get("*", (req, res) => {
+  res.sendFile(
+    path.join(
+      frontendPath,
+      "index.html"
+    )
   );
 });
 
+// ======================================================
+// START SERVER
+// ======================================================
+
+app.listen(
+  PORT,
+  "0.0.0.0",
+  () => {
+    console.log(
+      "================================"
+    );
+
+    console.log(
+      `Server running on port ${PORT}`
+    );
+
+    console.log(
+      "BeHealth Hospital Backend"
+    );
+
+    console.log(
+      "JWT authentication enabled"
+    );
+
+    console.log(
+      "JWT_SECRET configured:",
+      !!JWT_SECRET
+    );
+
+    console.log(
+      "JWT_SECRET length:",
+      JWT_SECRET.length
+    );
+
+    console.log(
+      "================================"
+    );
+  }
+);
