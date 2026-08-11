@@ -1,11 +1,15 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import "./Login.css";
+
+const API_URL = "https://behealth-hospital-1.onrender.com";
 
 function Login({ setIsLoggedIn, setShowRegister }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  async function handleLogin() {
+  async function handleLogin(e) {
+    e.preventDefault();
+
     if (!email || !password) {
       alert("❌ Please enter email and password");
       return;
@@ -14,36 +18,45 @@ function Login({ setIsLoggedIn, setShowRegister }) {
     try {
       console.log("Login button clicked");
 
-      const response = await fetch(
-        "https://behealth-hospital.onrender.com/api/login",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            email: email,
-            password: password,
-          }),
-        }
-      );
+      const response = await fetch(`${API_URL}/api/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: email.trim(),
+          password: password,
+        }),
+      });
 
       const data = await response.json();
 
       console.log("Login response:", data);
 
-      if (response.ok) {
-        console.log("Login successful:", data);
-
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("user", JSON.stringify(data.user));
-
-        alert("✅ Login successful");
-
-        setIsLoggedIn(true);
-      } else {
-        alert(`❌ ${data.message || "Login failed"}`);
+      if (!response.ok) {
+        alert(data.message || "❌ Login failed");
+        return;
       }
+
+      if (!data.token) {
+        alert("❌ Login failed: no token received");
+        return;
+      }
+
+      // Clear old authentication data
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+
+      // Save new authentication data
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+
+      console.log("Login successful");
+      console.log("Token saved:", !!localStorage.getItem("token"));
+
+      alert("✅ Login successful");
+
+      setIsLoggedIn(true);
     } catch (error) {
       console.error("Login error:", error);
       alert("❌ Cannot connect to backend");
@@ -53,30 +66,36 @@ function Login({ setIsLoggedIn, setShowRegister }) {
   return (
     <div className="login-container">
       <div className="login-box">
+
         <h1>🏥 BeHealth Hospital</h1>
 
         <h2>Welcome Back</h2>
 
-        <input
-          type="email"
-          placeholder="Enter Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
+        <form onSubmit={handleLogin}>
 
-        <input
-          type="password"
-          placeholder="Enter Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
+          <input
+            type="email"
+            placeholder="Enter Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
 
-        <button type="button" onClick={handleLogin}>
-          Login
-        </button>
+          <input
+            type="password"
+            placeholder="Enter Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+
+          <button type="submit">
+            Login
+          </button>
+
+        </form>
 
         <p>
           Don't have an account?{" "}
+
           <button
             type="button"
             onClick={() => setShowRegister(true)}
@@ -84,10 +103,10 @@ function Login({ setIsLoggedIn, setShowRegister }) {
             Register
           </button>
         </p>
+
       </div>
     </div>
   );
 }
 
 export default Login;
-
