@@ -54,7 +54,7 @@ function Login({ setIsLoggedIn, setShowRegister }) {
       console.log("Login successful");
       console.log("Token saved:", !!localStorage.getItem("token"));
 
-      alert("? Login successful");
+      alert("Login successful");
 
       setIsLoggedIn(true);
     } catch (error) {
