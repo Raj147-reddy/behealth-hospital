@@ -67,7 +67,7 @@ function Login({ setIsLoggedIn, setShowRegister }) {
     <div className="login-container">
       <div className="login-box">
 
-        <h1>?? BeHealth Hospital</h1>
+        <h1>BeHealth Hospital</h1>
 
         <h2>Welcome Back</h2>
 
