@@ -14,7 +14,7 @@ function Register({ setShowRegister }) {
 
     try {
       const response = await fetch(
-        "https://behealth-hospital.onrender.com/api/register",
+        "https://behealth-hospital-1.onrender.com/api/register",
         {
           method: "POST",
           headers: {
@@ -94,3 +94,5 @@ function Register({ setShowRegister }) {
 }
 
 export default Register;
+
+

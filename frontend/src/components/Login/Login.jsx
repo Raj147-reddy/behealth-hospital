@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import "./Login.css";
 
 const API_URL = "https://behealth-hospital-1.onrender.com";
@@ -11,7 +11,7 @@ function Login({ setIsLoggedIn, setShowRegister }) {
     e.preventDefault();
 
     if (!email || !password) {
-      alert("❌ Please enter email and password");
+      alert("? Please enter email and password");
       return;
     }
 
@@ -34,12 +34,12 @@ function Login({ setIsLoggedIn, setShowRegister }) {
       console.log("Login response:", data);
 
       if (!response.ok) {
-        alert(data.message || "❌ Login failed");
+        alert(data.message || "? Login failed");
         return;
       }
 
       if (!data.token) {
-        alert("❌ Login failed: no token received");
+        alert("? Login failed: no token received");
         return;
       }
 
@@ -54,12 +54,12 @@ function Login({ setIsLoggedIn, setShowRegister }) {
       console.log("Login successful");
       console.log("Token saved:", !!localStorage.getItem("token"));
 
-      alert("✅ Login successful");
+      alert("? Login successful");
 
       setIsLoggedIn(true);
     } catch (error) {
       console.error("Login error:", error);
-      alert("❌ Cannot connect to backend");
+      alert("? Cannot connect to backend");
     }
   }
 
@@ -67,7 +67,7 @@ function Login({ setIsLoggedIn, setShowRegister }) {
     <div className="login-container">
       <div className="login-box">
 
-        <h1>🏥 BeHealth Hospital</h1>
+        <h1>?? BeHealth Hospital</h1>
 
         <h2>Welcome Back</h2>
 
@@ -110,3 +110,5 @@ function Login({ setIsLoggedIn, setShowRegister }) {
 }
 
 export default Login;
+
+

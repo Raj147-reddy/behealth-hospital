@@ -18,7 +18,7 @@ function AdminDashboard() {
       }
 
       const response = await fetch(
-        "https://behealth-hospital.onrender.com/api/admin/appointments",
+        "https://behealth-hospital-1.onrender.com/api/admin/appointments",
         {
           method: "GET",
           headers: {
@@ -49,7 +49,7 @@ function AdminDashboard() {
       const token = localStorage.getItem("token");
 
       const response = await fetch(
-        `https://behealth-hospital.onrender.com/api/admin/appointments/${id}/status`,
+        `https://behealth-hospital-1.onrender.com/api/admin/appointments/${id}/status`,
         {
           method: "PUT",
           headers: {
@@ -199,4 +199,7 @@ function AdminDashboard() {
 }
 
 export default AdminDashboard;
+
+
+
 
