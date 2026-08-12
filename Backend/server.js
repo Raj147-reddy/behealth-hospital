@@ -4,7 +4,6 @@
 
 const express = require("express");
 const cors = require("cors");
-const path = require("path");
 const { Pool } = require("pg");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
@@ -16,12 +15,10 @@ const app = express();
 // ======================================================
 
 const PORT = process.env.PORT || 5000;
-
-// JWT_SECRET MUST be configured in Render Environment Variables
 const JWT_SECRET = process.env.JWT_SECRET;
 
 if (!JWT_SECRET) {
-  console.error("ERROR: JWT_SECRET is missing on Render");
+  console.error("ERROR: JWT_SECRET is missing");
   process.exit(1);
 }
 
@@ -30,7 +27,11 @@ if (!JWT_SECRET) {
 // ======================================================
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  host: process.env.DB_HOST,
+  database: process.env.DB_NAME,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  port: Number(process.env.DB_PORT) || 5432,
 
   ssl:
     process.env.NODE_ENV === "production"
@@ -57,7 +58,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // ======================================================
-// TEST ROUTE
+// HEALTH CHECK
 // ======================================================
 
 app.get("/api/health", async (req, res) => {
@@ -73,6 +74,7 @@ app.get("/api/health", async (req, res) => {
 
     res.status(500).json({
       message: "Database connection failed",
+      error: error.message,
     });
   }
 });
@@ -86,32 +88,11 @@ function authenticateToken(req, res, next) {
 
   console.log("================================");
   console.log("AUTHENTICATION REQUEST");
-  console.log("Request:", req.method, req.originalUrl);
+  console.log("REQUEST:", req.method, req.originalUrl);
   console.log("AUTH HEADER EXISTS:", !!authHeader);
 
-  if (authHeader) {
-    console.log(
-      "AUTH HEADER:",
-      authHeader.substring(0, 35) + "..."
-    );
-  } else {
-    console.log("AUTH HEADER: NONE");
-  }
-
-  console.log(
-    "JWT SECRET LENGTH:",
-    JWT_SECRET.length
-  );
-
-  // --------------------------------------------------
-  // CHECK AUTHORIZATION HEADER
-  // --------------------------------------------------
-
   if (!authHeader) {
-    console.log(
-      "ERROR: Authorization header missing"
-    );
-
+    console.log("Authorization header missing");
     console.log("================================");
 
     return res.status(401).json({
@@ -119,30 +100,13 @@ function authenticateToken(req, res, next) {
     });
   }
 
-  // --------------------------------------------------
-  // CHECK BEARER FORMAT
-  // --------------------------------------------------
-
   const parts = authHeader.trim().split(/\s+/);
-
-  console.log(
-    "AUTH HEADER PARTS:",
-    parts.length
-  );
-
-  console.log(
-    "AUTH TYPE:",
-    parts[0]
-  );
 
   if (
     parts.length !== 2 ||
-    parts[0] !== "Bearer"
+    parts[0].toLowerCase() !== "bearer"
   ) {
-    console.log(
-      "ERROR: Invalid authorization format"
-    );
-
+    console.log("Invalid authorization format");
     console.log("================================");
 
     return res.status(401).json({
@@ -152,66 +116,20 @@ function authenticateToken(req, res, next) {
 
   const token = parts[1];
 
-  console.log(
-    "TOKEN LENGTH:",
-    token.length
-  );
-
-  console.log(
-    "TOKEN PREVIEW:",
-    token.substring(0, 25) + "..."
-  );
-
-  // --------------------------------------------------
-  // VERIFY JWT
-  // --------------------------------------------------
-
   try {
-    const decoded = jwt.verify(
-      token,
-      JWT_SECRET
-    );
+    const decoded = jwt.verify(token, JWT_SECRET);
 
-    console.log(
-      "JWT VERIFICATION SUCCESSFUL"
-    );
-
-    console.log(
-      "DECODED USER ID:",
-      decoded.id
-    );
-
-    console.log(
-      "DECODED EMAIL:",
-      decoded.email
-    );
-
-    console.log(
-      "TOKEN EXPIRATION:",
-      decoded.exp
-    );
-
+    console.log("JWT VERIFICATION SUCCESSFUL");
+    console.log("DECODED USER ID:", decoded.id);
+    console.log("DECODED EMAIL:", decoded.email);
     console.log("================================");
 
     req.user = decoded;
 
     next();
   } catch (error) {
-    console.error("================================");
-    console.error(
-      "JWT VERIFICATION FAILED"
-    );
-
-    console.error(
-      "ERROR NAME:",
-      error.name
-    );
-
-    console.error(
-      "ERROR MESSAGE:",
-      error.message
-    );
-
+    console.error("JWT VERIFICATION FAILED");
+    console.error("ERROR:", error.message);
     console.error("================================");
 
     return res.status(401).json({
@@ -227,11 +145,7 @@ function authenticateToken(req, res, next) {
 
 app.post("/api/register", async (req, res) => {
   try {
-    const {
-      name,
-      email,
-      password,
-    } = req.body;
+    const { name, email, password } = req.body;
 
     if (!name || !email || !password) {
       return res.status(400).json({
@@ -239,16 +153,14 @@ app.post("/api/register", async (req, res) => {
       });
     }
 
-    const normalizedEmail =
-      email.trim().toLowerCase();
+    const normalizedEmail = email.trim().toLowerCase();
 
-    const existingUser =
-      await pool.query(
-        `SELECT id
-         FROM users
-         WHERE LOWER(email) = LOWER($1)`,
-        [normalizedEmail]
-      );
+    const existingUser = await pool.query(
+      `SELECT id
+       FROM users
+       WHERE LOWER(email) = LOWER($1)`,
+      [normalizedEmail]
+    );
 
     if (existingUser.rows.length > 0) {
       return res.status(409).json({
@@ -256,36 +168,31 @@ app.post("/api/register", async (req, res) => {
       });
     }
 
-    const hashedPassword =
-      await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-    const result =
-      await pool.query(
-        `INSERT INTO users
-          (name, email, password)
-         VALUES
-          ($1, $2, $3)
-         RETURNING
-          id,
-          name,
-          email,
-          is_admin`,
-        [
-          name.trim(),
-          normalizedEmail,
-          hashedPassword,
-        ]
-      );
+    const result = await pool.query(
+      `INSERT INTO users
+        (name, email, password)
+       VALUES
+        ($1, $2, $3)
+       RETURNING
+        id,
+        name,
+        email,
+        is_admin`,
+      [
+        name.trim(),
+        normalizedEmail,
+        hashedPassword,
+      ]
+    );
 
     res.status(201).json({
       message: "Registration successful",
       user: result.rows[0],
     });
   } catch (error) {
-    console.error(
-      "Register error:",
-      error
-    );
+    console.error("Register error:", error);
 
     res.status(500).json({
       message: "Server error",
@@ -295,64 +202,51 @@ app.post("/api/register", async (req, res) => {
 });
 
 // ======================================================
-// LOGIN
+// NORMAL USER LOGIN
 // ======================================================
 
 app.post("/api/login", async (req, res) => {
   try {
-    const {
-      email,
-      password,
-    } = req.body;
+    const { email, password } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({
-        message:
-          "Email and password are required",
+        message: "Email and password are required",
       });
     }
 
-    const normalizedEmail =
-      email.trim().toLowerCase();
+    const normalizedEmail = email.trim().toLowerCase();
 
-    const result =
-      await pool.query(
-        `SELECT
-          id,
-          name,
-          email,
-          password,
-          is_admin
-         FROM users
-         WHERE LOWER(email) = LOWER($1)`,
-        [normalizedEmail]
-      );
+    const result = await pool.query(
+      `SELECT
+        id,
+        name,
+        email,
+        password,
+        is_admin
+       FROM users
+       WHERE LOWER(email) = LOWER($1)`,
+      [normalizedEmail]
+    );
 
     if (result.rows.length === 0) {
       return res.status(401).json({
-        message:
-          "Invalid email or password",
+        message: "Invalid email or password",
       });
     }
 
     const user = result.rows[0];
 
-    const passwordMatch =
-      await bcrypt.compare(
-        password,
-        user.password
-      );
+    const passwordMatch = await bcrypt.compare(
+      password,
+      user.password
+    );
 
     if (!passwordMatch) {
       return res.status(401).json({
-        message:
-          "Invalid email or password",
+        message: "Invalid email or password",
       });
     }
-
-    // --------------------------------------------------
-    // CREATE JWT
-    // --------------------------------------------------
 
     const token = jwt.sign(
       {
@@ -365,43 +259,15 @@ app.post("/api/login", async (req, res) => {
       }
     );
 
-    console.log(
-      "================================"
-    );
-
-    console.log(
-      "JWT CREATED"
-    );
-
-    console.log(
-      "USER ID:",
-      user.id
-    );
-
-    console.log(
-      "USER EMAIL:",
-      user.email
-    );
-
-    console.log(
-      "JWT SECRET LENGTH:",
-      JWT_SECRET.length
-    );
-
-    console.log(
-      "TOKEN LENGTH:",
-      token.length
-    );
-
-    console.log(
-      "================================"
-    );
+    console.log("================================");
+    console.log("USER LOGIN SUCCESSFUL");
+    console.log("USER ID:", user.id);
+    console.log("EMAIL:", user.email);
+    console.log("================================");
 
     res.json({
       message: "Login successful",
-
       token,
-
       user: {
         id: user.id,
         name: user.name,
@@ -410,10 +276,7 @@ app.post("/api/login", async (req, res) => {
       },
     });
   } catch (error) {
-    console.error(
-      "Login error:",
-      error
-    );
+    console.error("Login error:", error);
 
     res.status(500).json({
       message: "Server error",
@@ -423,7 +286,98 @@ app.post("/api/login", async (req, res) => {
 });
 
 // ======================================================
-// GET CURRENT USER
+// ADMIN LOGIN
+// ======================================================
+
+app.post("/api/admin/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({
+        message: "Email and password are required",
+      });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+
+    const result = await pool.query(
+      `SELECT
+        id,
+        name,
+        email,
+        password,
+        is_admin
+       FROM users
+       WHERE LOWER(email) = LOWER($1)`,
+      [normalizedEmail]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(401).json({
+        message: "Invalid admin email or password",
+      });
+    }
+
+    const user = result.rows[0];
+
+    const passwordMatch = await bcrypt.compare(
+      password,
+      user.password
+    );
+
+    if (!passwordMatch) {
+      return res.status(401).json({
+        message: "Invalid admin email or password",
+      });
+    }
+
+    if (user.is_admin !== true) {
+      return res.status(403).json({
+        message: "Admin access required",
+      });
+    }
+
+    const token = jwt.sign(
+      {
+        id: user.id,
+        email: user.email,
+        is_admin: true,
+      },
+      JWT_SECRET,
+      {
+        expiresIn: "7d",
+      }
+    );
+
+    console.log("================================");
+    console.log("ADMIN LOGIN SUCCESSFUL");
+    console.log("ADMIN ID:", user.id);
+    console.log("ADMIN EMAIL:", user.email);
+    console.log("================================");
+
+    res.json({
+      message: "Admin login successful",
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        is_admin: true,
+      },
+    });
+  } catch (error) {
+    console.error("Admin login error:", error);
+
+    res.status(500).json({
+      message: "Server error",
+      error: error.message,
+    });
+  }
+});
+
+// ======================================================
+// GET CURRENT USER PROFILE
 // ======================================================
 
 app.get(
@@ -431,17 +385,16 @@ app.get(
   authenticateToken,
   async (req, res) => {
     try {
-      const result =
-        await pool.query(
-          `SELECT
-            id,
-            name,
-            email,
-            is_admin
-           FROM users
-           WHERE id = $1`,
-          [req.user.id]
-        );
+      const result = await pool.query(
+        `SELECT
+          id,
+          name,
+          email,
+          is_admin
+         FROM users
+         WHERE id = $1`,
+        [req.user.id]
+      );
 
       if (result.rows.length === 0) {
         return res.status(404).json({
@@ -453,13 +406,11 @@ app.get(
         user: result.rows[0],
       });
     } catch (error) {
-      console.error(
-        "Profile error:",
-        error
-      );
+      console.error("Profile error:", error);
 
       res.status(500).json({
         message: "Server error",
+        error: error.message,
       });
     }
   }
@@ -490,57 +441,49 @@ app.post(
         !problem
       ) {
         return res.status(400).json({
-          message:
-            "Please fill all appointment fields",
+          message: "Please fill all appointment fields",
         });
       }
 
-      const result =
-        await pool.query(
-          `INSERT INTO appointments
-            (
-              name,
-              email,
-              phone,
-              department,
-              problem,
-              user_id,
-              status
-            )
-           VALUES
-            ($1, $2, $3, $4, $5, $6, 'Pending')
-           RETURNING
-            id,
+      const result = await pool.query(
+        `INSERT INTO appointments
+          (
             name,
             email,
             phone,
             department,
             problem,
             user_id,
-            status,
-            created_at`,
-          [
-            name,
-            email,
-            phone,
-            department,
-            problem,
-            req.user.id,
-          ]
-        );
+            status
+          )
+         VALUES
+          ($1, $2, $3, $4, $5, $6, 'Pending')
+         RETURNING
+          id,
+          name,
+          email,
+          phone,
+          department,
+          problem,
+          user_id,
+          status,
+          created_at`,
+        [
+          name.trim(),
+          email.trim().toLowerCase(),
+          phone.trim(),
+          department,
+          problem.trim(),
+          req.user.id,
+        ]
+      );
 
       res.status(201).json({
-        message:
-          "Appointment booked successfully",
-
-        appointment:
-          result.rows[0],
+        message: "Appointment booked successfully",
+        appointment: result.rows[0],
       });
     } catch (error) {
-      console.error(
-        "Book appointment error:",
-        error
-      );
+      console.error("Book appointment error:", error);
 
       res.status(500).json({
         message: "Server error",
@@ -558,58 +501,27 @@ app.get(
   "/api/my-appointments",
   authenticateToken,
   async (req, res) => {
-    console.log(
-      "================================"
-    );
-
-    console.log(
-      "GET MY APPOINTMENTS"
-    );
-
-    console.log(
-      "USER ID:",
-      req.user.id
-    );
-
-    console.log(
-      "USER EMAIL:",
-      req.user.email
-    );
-
-    console.log(
-      "================================"
-    );
-
     try {
-      const result =
-        await pool.query(
-          `SELECT
-            id,
-            name,
-            email,
-            phone,
-            department,
-            problem,
-            user_id,
-            status,
-            created_at
-           FROM appointments
-           WHERE user_id = $1
-           ORDER BY created_at DESC`,
-          [req.user.id]
-        );
-
-      console.log(
-        "Appointments found:",
-        result.rows.length
+      const result = await pool.query(
+        `SELECT
+          id,
+          name,
+          email,
+          phone,
+          department,
+          problem,
+          user_id,
+          status,
+          created_at
+         FROM appointments
+         WHERE user_id = $1
+         ORDER BY created_at DESC`,
+        [req.user.id]
       );
 
       res.json({
-        message:
-          "Appointments fetched successfully",
-
-        appointments:
-          result.rows,
+        message: "Appointments fetched successfully",
+        appointments: result.rows,
       });
     } catch (error) {
       console.error(
@@ -633,32 +545,30 @@ app.put(
   "/api/appointments/:id/cancel",
   authenticateToken,
   async (req, res) => {
-    const appointmentId =
-      req.params.id;
+    const appointmentId = req.params.id;
 
     try {
-      const result =
-        await pool.query(
-          `UPDATE appointments
-           SET status = 'Cancelled'
-           WHERE id = $1
-           AND user_id = $2
-           AND status = 'Pending'
-           RETURNING
-            id,
-            name,
-            email,
-            phone,
-            department,
-            problem,
-            user_id,
-            status,
-            created_at`,
-          [
-            appointmentId,
-            req.user.id,
-          ]
-        );
+      const result = await pool.query(
+        `UPDATE appointments
+         SET status = 'Cancelled'
+         WHERE id = $1
+         AND user_id = $2
+         AND status = 'Pending'
+         RETURNING
+          id,
+          name,
+          email,
+          phone,
+          department,
+          problem,
+          user_id,
+          status,
+          created_at`,
+        [
+          appointmentId,
+          req.user.id,
+        ]
+      );
 
       if (result.rows.length === 0) {
         return res.status(404).json({
@@ -668,11 +578,8 @@ app.put(
       }
 
       res.json({
-        message:
-          "Appointment cancelled successfully",
-
-        appointment:
-          result.rows[0],
+        message: "Appointment cancelled successfully",
+        appointment: result.rows[0],
       });
     } catch (error) {
       console.error(
@@ -692,54 +599,41 @@ app.put(
 // ADMIN AUTHENTICATION
 // ======================================================
 
-async function authenticateAdmin(
-  req,
-  res,
-  next
-) {
-  const authHeader =
-    req.headers.authorization;
+async function authenticateAdmin(req, res, next) {
+  const authHeader = req.headers.authorization;
 
   if (!authHeader) {
     return res.status(401).json({
-      message:
-        "Authorization token required",
+      message: "Authorization token required",
     });
   }
 
-  const parts =
-    authHeader.trim().split(/\s+/);
+  const parts = authHeader.trim().split(/\s+/);
 
   if (
     parts.length !== 2 ||
-    parts[0] !== "Bearer"
+    parts[0].toLowerCase() !== "bearer"
   ) {
     return res.status(401).json({
-      message:
-        "Invalid authorization format",
+      message: "Invalid authorization format",
     });
   }
 
   const token = parts[1];
 
   try {
-    const decoded =
-      jwt.verify(
-        token,
-        JWT_SECRET
-      );
+    const decoded = jwt.verify(token, JWT_SECRET);
 
-    const result =
-      await pool.query(
-        `SELECT
-          id,
-          name,
-          email,
-          is_admin
-         FROM users
-         WHERE id = $1`,
-        [decoded.id]
-      );
+    const result = await pool.query(
+      `SELECT
+        id,
+        name,
+        email,
+        is_admin
+       FROM users
+       WHERE id = $1`,
+      [decoded.id]
+    );
 
     if (result.rows.length === 0) {
       return res.status(404).json({
@@ -747,13 +641,11 @@ async function authenticateAdmin(
       });
     }
 
-    const user =
-      result.rows[0];
+    const user = result.rows[0];
 
     if (user.is_admin !== true) {
       return res.status(403).json({
-        message:
-          "Admin access required",
+        message: "Admin access required",
       });
     }
 
@@ -782,28 +674,25 @@ app.get(
   authenticateAdmin,
   async (req, res) => {
     try {
-      const result =
-        await pool.query(
-          `SELECT
-            id,
-            name,
-            email,
-            phone,
-            department,
-            problem,
-            user_id,
-            status,
-            created_at
-           FROM appointments
-           ORDER BY created_at DESC`
-        );
+      const result = await pool.query(
+        `SELECT
+          id,
+          name,
+          email,
+          phone,
+          department,
+          problem,
+          user_id,
+          status,
+          created_at
+         FROM appointments
+         ORDER BY created_at DESC`
+      );
 
       res.json({
         message:
           "Admin appointments fetched successfully",
-
-        appointments:
-          result.rows,
+        appointments: result.rows,
       });
     } catch (error) {
       console.error(
@@ -827,9 +716,7 @@ app.put(
   "/api/admin/appointments/:id/status",
   authenticateAdmin,
   async (req, res) => {
-    const appointmentId =
-      req.params.id;
-
+    const appointmentId = req.params.id;
     const { status } = req.body;
 
     const allowedStatuses = [
@@ -839,50 +726,43 @@ app.put(
       "Cancelled",
     ];
 
-    if (
-      !allowedStatuses.includes(status)
-    ) {
+    if (!allowedStatuses.includes(status)) {
       return res.status(400).json({
-        message:
-          "Invalid appointment status",
+        message: "Invalid appointment status",
       });
     }
 
     try {
-      const result =
-        await pool.query(
-          `UPDATE appointments
-           SET status = $1
-           WHERE id = $2
-           RETURNING
-            id,
-            name,
-            email,
-            phone,
-            department,
-            problem,
-            user_id,
-            status,
-            created_at`,
-          [
-            status,
-            appointmentId,
-          ]
-        );
+      const result = await pool.query(
+        `UPDATE appointments
+         SET status = $1
+         WHERE id = $2
+         RETURNING
+          id,
+          name,
+          email,
+          phone,
+          department,
+          problem,
+          user_id,
+          status,
+          created_at`,
+        [
+          status,
+          appointmentId,
+        ]
+      );
 
       if (result.rows.length === 0) {
         return res.status(404).json({
-          message:
-            "Appointment not found",
+          message: "Appointment not found",
         });
       }
 
       res.json({
         message:
           "Appointment status updated successfully",
-
-        appointment:
-          result.rows[0],
+        appointment: result.rows[0],
       });
     } catch (error) {
       console.error(
@@ -899,66 +779,17 @@ app.put(
 );
 
 // ======================================================
-// SERVE REACT FRONTEND
-// ======================================================
-
-const frontendPath = path.join(
-  __dirname,
-  "../frontend/dist"
-);
-
-app.use(
-  express.static(frontendPath)
-);
-
-// IMPORTANT:
-// Express 5 does NOT accept app.get("*").
-// This is the Express 5 compatible wildcard.
-app.get("/{*splat}", (req, res) => {
-  res.sendFile(
-    path.join(
-      frontendPath,
-      "index.html"
-    )
-  );
-});
-
-// ======================================================
 // START SERVER
 // ======================================================
 
-app.listen(
-  PORT,
-  "0.0.0.0",
-  () => {
-    console.log(
-      "================================"
-    );
-
-    console.log(
-      `Server running on port ${PORT}`
-    );
-
-    console.log(
-      "BeHealth Hospital Backend"
-    );
-
-    console.log(
-      "JWT authentication enabled"
-    );
-
-    console.log(
-      "JWT_SECRET configured:",
-      !!JWT_SECRET
-    );
-
-    console.log(
-      "JWT_SECRET length:",
-      JWT_SECRET.length
-    );
-
-    console.log(
-      "================================"
-    );
-  }
-);
+app.listen(PORT, "0.0.0.0", () => {
+  console.log("================================");
+  console.log(`Server running on port ${PORT}`);
+  console.log("BeHealth Hospital Backend");
+  console.log("JWT authentication enabled");
+  console.log(
+    "JWT_SECRET configured:",
+    !!JWT_SECRET
+  );
+  console.log("================================");
+});

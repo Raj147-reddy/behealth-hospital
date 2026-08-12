@@ -1,17 +1,19 @@
 import { useState } from "react";
 
 import Login from "./components/Login/Login";
+import AdminLogin from "./components/AdminLogin/AdminLogin";
 import Register from "./components/Register/Register";
-import Profile from "./components/Profile/Profile";
-import MyAppointments from "./components/MyAppointments/MyAppointments";
-import AdminDashboard from "./components/AdminDashboard/AdminDashboard";
 
+import Navbar from "./components/Navbar/Navbar";
 import Hero from "./components/Hero/Hero";
 import About from "./components/About/About";
 import Services from "./components/Services/Services";
 import Doctors from "./components/Doctors/Doctors";
 import Appointment from "./components/Appointment/Appointment";
+import MyAppointments from "./components/MyAppointments/MyAppointments";
+import Profile from "./components/Profile/Profile";
 import Footer from "./components/Footer/Footer";
+import AdminDashboard from "./components/AdminDashboard/AdminDashboard";
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(
@@ -19,23 +21,29 @@ function App() {
   );
 
   const [showRegister, setShowRegister] = useState(false);
-  const [page, setPage] = useState("home");
 
-  const user = JSON.parse(
-    localStorage.getItem("user") || "{}"
-  );
+  const [showAdminLogin, setShowAdminLogin] =
+    useState(false);
 
-  const isAdmin = user.is_admin === true;
+  const [currentPage, setCurrentPage] =
+    useState("home");
 
-  function handleLogout() {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-
-    setIsLoggedIn(false);
-    setPage("home");
-  }
+  // ==================================================
+  // LOGGED OUT
+  // ==================================================
 
   if (!isLoggedIn) {
+    // ADMIN LOGIN
+    if (showAdminLogin) {
+      return (
+        <AdminLogin
+          setIsLoggedIn={setIsLoggedIn}
+          setShowAdminLogin={setShowAdminLogin}
+        />
+      );
+    }
+
+    // REGISTER
     if (showRegister) {
       return (
         <Register
@@ -44,115 +52,79 @@ function App() {
       );
     }
 
+    // USER LOGIN
     return (
       <Login
         setIsLoggedIn={setIsLoggedIn}
         setShowRegister={setShowRegister}
+        setShowAdminLogin={setShowAdminLogin}
       />
     );
   }
 
-  if (page === "profile") {
+  // ==================================================
+  // LOGOUT
+  // ==================================================
+
+  function handleLogout() {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    localStorage.removeItem("isAdmin");
+
+    setIsLoggedIn(false);
+    setShowRegister(false);
+    setShowAdminLogin(false);
+    setCurrentPage("home");
+  }
+
+  // ==================================================
+  // HOME
+  // ==================================================
+
+  function renderHome() {
     return (
       <>
-        <button onClick={() => setPage("home")}>
-          Home
-        </button>
-
-        <button onClick={() => setPage("appointments")}>
-          My Appointments
-        </button>
-
-        <button onClick={handleLogout}>
-          Logout
-        </button>
-
-        <Profile />
+        <Hero />
+        <About />
+        <Services />
+        <Doctors />
       </>
     );
   }
 
-  if (page === "appointments") {
-    return (
-      <>
-        <button onClick={() => setPage("home")}>
-          Home
-        </button>
-
-        <button onClick={() => setPage("profile")}>
-          Profile
-        </button>
-
-        <button onClick={handleLogout}>
-          Logout
-        </button>
-
-        <MyAppointments />
-      </>
-    );
-  }
-
-  if (page === "admin" && isAdmin) {
-    return (
-      <>
-        <button onClick={() => setPage("home")}>
-          Home
-        </button>
-
-        <button onClick={handleLogout}>
-          Logout
-        </button>
-
-        <AdminDashboard />
-      </>
-    );
-  }
+  // ==================================================
+  // MAIN PAGE
+  // ==================================================
 
   return (
     <>
-      <nav
-        style={{
-          padding: "15px",
-          background: "#eeeeee",
-          display: "flex",
-          gap: "10px",
-        }}
-      >
-        <button onClick={() => setPage("home")}>
-          Home
-        </button>
+      <Navbar
+        setCurrentPage={setCurrentPage}
+        handleLogout={handleLogout}
+      />
 
-        <button onClick={() => setPage("profile")}>
-          Profile
-        </button>
+      {currentPage === "home" &&
+        renderHome()}
 
-        <button onClick={() => setPage("appointments")}>
-          My Appointments
-        </button>
+      {currentPage === "appointment" && (
+        <Appointment />
+      )}
 
-        {isAdmin && (
-          <button onClick={() => setPage("admin")}>
-            Admin Dashboard
-          </button>
-        )}
+      {currentPage === "my-appointments" && (
+        <MyAppointments />
+      )}
 
-        <button onClick={handleLogout}>
-          Logout
-        </button>
-      </nav>
+      {currentPage === "profile" && (
+        <Profile />
+      )}
 
-      <Hero />
-      <About />
-      <Services />
-      <Doctors />
-      <Appointment />
+      {currentPage === "admin" && (
+        <AdminDashboard />
+      )}
+
       <Footer />
     </>
   );
 }
 
 export default App;
-
-
-
-

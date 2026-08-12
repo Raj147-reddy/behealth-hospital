@@ -1,98 +1,59 @@
 import "./Navbar.css";
 
-function Navbar({
-  setIsLoggedIn,
-  setShowProfile,
-  setShowAppointments,
-  setShowAdmin,
-  isAdmin,
-}) {
-  function handleLogout() {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-
-    setIsLoggedIn(false);
-  }
-
-  function handleHome() {
-    setShowProfile(false);
-    setShowAppointments(false);
-    setShowAdmin(false);
-  }
-
-  function handleProfile() {
-    setShowProfile(true);
-    setShowAppointments(false);
-    setShowAdmin(false);
-  }
-
-  function handleAppointments() {
-    setShowProfile(false);
-    setShowAppointments(true);
-    setShowAdmin(false);
-  }
-
-  function handleAdmin() {
-    setShowProfile(false);
-    setShowAppointments(false);
-    setShowAdmin(true);
-  }
-
+function Navbar({ setCurrentPage, handleLogout }) {
   return (
-    <nav>
-      <div className="logo">
+    <nav className="navbar">
+      <div className="navbar-logo">
         🏥 BeHealth Hospital
       </div>
 
-      <ul className="nav-links">
-        <li onClick={handleHome}>
+      <div className="navbar-links">
+        <button onClick={() => setCurrentPage("home")}>
           Home
-        </li>
+        </button>
 
-        <li onClick={handleHome}>
+        <button onClick={() => setCurrentPage("about")}>
           About
-        </li>
+        </button>
 
-        <li onClick={handleHome}>
+        <button onClick={() => setCurrentPage("services")}>
           Services
-        </li>
+        </button>
 
-        <li onClick={handleHome}>
+        <button onClick={() => setCurrentPage("doctors")}>
           Doctors
-        </li>
+        </button>
 
-        <li onClick={handleHome}>
+        <button
+          onClick={() => setCurrentPage("appointment")}
+        >
           Appointment
-        </li>
+        </button>
 
-        <li onClick={handleAppointments}>
+        <button
+          onClick={() => setCurrentPage("my-appointments")}
+        >
           My Appointments
-        </li>
+        </button>
 
-        <li onClick={handleHome}>
+        <button onClick={() => setCurrentPage("contact")}>
           Contact
-        </li>
+        </button>
 
-        <li onClick={handleProfile}>
+        <button onClick={() => setCurrentPage("profile")}>
           Profile
-        </li>
+        </button>
 
-        {isAdmin && (
-          <li onClick={handleAdmin}>
-            Admin Dashboard
-          </li>
-        )}
-
-        <li>
-          <button onClick={handleLogout}>
-            Logout
-          </button>
-        </li>
-      </ul>
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="logout-button"
+        >
+          Logout
+        </button>
+      </div>
     </nav>
   );
 }
 
 export default Navbar;
-
-
