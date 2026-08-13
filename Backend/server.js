@@ -2,6 +2,8 @@
 // BEHEALTH HOSPITAL - COMPLETE BACKEND SERVER
 // ======================================================
 
+require("dotenv").config({ path: "./Backend/.env" });
+
 const express = require("express");
 const cors = require("cors");
 const { Pool } = require("pg");
@@ -697,6 +699,43 @@ app.get(
     } catch (error) {
       console.error(
         "Admin appointments database error:",
+        error
+      );
+
+      res.status(500).json({
+        message: "Server error",
+        error: error.message,
+      });
+    }
+  }
+);
+
+// ======================================================
+// ADMIN - GET ALL REGISTERED USERS
+// ======================================================
+
+app.get(
+  "/api/admin/users",
+  authenticateAdmin,
+  async (req, res) => {
+    try {
+      const result = await pool.query(
+        `SELECT
+          id,
+          name,
+          email,
+          is_admin
+         FROM users
+         ORDER BY id DESC`
+      );
+
+      res.json({
+        message: "Registered users fetched successfully",
+        users: result.rows,
+      });
+    } catch (error) {
+      console.error(
+        "Admin users database error:",
         error
       );
 

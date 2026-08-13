@@ -23,19 +23,8 @@ function App() {
   const [showAdminLogin, setShowAdminLogin] = useState(false);
   const [currentPage, setCurrentPage] = useState("home");
 
-  const isAdmin = localStorage.getItem("isAdmin") === "true";
-
-  console.log("APP CHECK:", {
-    isLoggedIn,
-    isAdmin,
-    token: localStorage.getItem("token"),
-    adminFlag: localStorage.getItem("isAdmin"),
-    currentPage,
-  });
-
-  // ==============================
-  // LOGOUT
-  // ==============================
+  const isAdmin =
+    localStorage.getItem("isAdmin") === "true";
 
   function handleLogout() {
     localStorage.removeItem("token");
@@ -80,7 +69,43 @@ function App() {
   }
 
   // ==============================
-  // LOGGED-IN USER / ADMIN
+  // ADMIN
+  // ==============================
+
+  if (isAdmin) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          background: "#f5f7fa",
+        }}
+      >
+        <AdminDashboard />
+
+        <button
+          onClick={handleLogout}
+          style={{
+            position: "fixed",
+            top: "20px",
+            right: "20px",
+            zIndex: 99999,
+            padding: "12px 22px",
+            background: "#d32f2f",
+            color: "white",
+            border: "none",
+            borderRadius: "6px",
+            cursor: "pointer",
+            fontWeight: "bold",
+          }}
+        >
+          Logout
+        </button>
+      </div>
+    );
+  }
+
+  // ==============================
+  // NORMAL USER
   // ==============================
 
   return (
@@ -90,66 +115,25 @@ function App() {
         handleLogout={handleLogout}
       />
 
-      {/* ==============================
-          ADMIN PAGES
-          ============================== */}
-
-      {isAdmin ? (
+      {currentPage === "home" && (
         <>
-          {currentPage === "home" && (
-            <>
-              <Hero />
-              <About />
-              <Services />
-              <Doctors />
-            </>
-          )}
-
-          {currentPage === "admin-dashboard" && (
-            <AdminDashboard />
-          )}
-
-          {currentPage === "admin-appointments" && (
-            <div style={{ padding: "40px", textAlign: "center" }}>
-              <h1>Admin Appointments</h1>
-              <p>Manage hospital appointments here.</p>
-            </div>
-          )}
-
-          {currentPage === "admin-doctors" && (
-            <div style={{ padding: "40px", textAlign: "center" }}>
-              <h1>Admin Doctors</h1>
-              <p>Manage hospital doctors here.</p>
-            </div>
-          )}
+          <Hero />
+          <About />
+          <Services />
+          <Doctors />
         </>
-      ) : (
-        /* ==============================
-           NORMAL USER PAGES
-           ============================== */
+      )}
 
-        <>
-          {currentPage === "home" && (
-            <>
-              <Hero />
-              <About />
-              <Services />
-              <Doctors />
-            </>
-          )}
+      {currentPage === "appointment" && (
+        <Appointment />
+      )}
 
-          {currentPage === "appointment" && (
-            <Appointment />
-          )}
+      {currentPage === "my-appointments" && (
+        <MyAppointments />
+      )}
 
-          {currentPage === "my-appointments" && (
-            <MyAppointments />
-          )}
-
-          {currentPage === "profile" && (
-            <Profile />
-          )}
-        </>
+      {currentPage === "profile" && (
+        <Profile />
       )}
 
       <Footer />
